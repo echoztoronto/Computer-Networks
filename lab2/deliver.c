@@ -6,8 +6,18 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <time.h>
+#include <math.h>
+#define MIN(a, b) ((a<b) ? a : b)
 
+struct Packet{
+
+	unsigned int total_frag;
+	unsigned int frag_no;
+	unsigned int size;
+	char* filename;
+	char filedata[1000];
+
+};
 
 int main(int argc, char *argv[])
 {
@@ -19,9 +29,12 @@ int main(int argc, char *argv[])
     }
     
     // Initialize our variables
-    int sockfd, address, port, sent_count, received_count;
+    int sockfd, address, port, sent_count, received_count, current_frag;
     socklen_t sockaddr_size;
+    float file_size;
     const int BUF_SIZE = 50;
+    FILE *file;
+    struct Packet pkt;
     
     // Convert string arguments to ints
     address = atoi(argv[1]);
@@ -77,10 +90,10 @@ int main(int argc, char *argv[])
 	printf("Exiting...\n");
         exit(1);
     }
-    
+   
     // Reset the buffer to empty
     bzero(buf, BUF_SIZE);
-    
+
     // Once the file is confirmed to exist, senf 'ftp' to the server
     sent_count = sendto(sockfd, "ftp", sizeof("ftp"), 0, (struct sockaddr *)&server_addr, sockaddr_size );    
     if(sent_count == -1){
@@ -88,11 +101,6 @@ int main(int argc, char *argv[])
 	printf("Exiting...\n");
 	exit(1);
     }
-
-    clock_t start_t, end_t;
-    double time_elapsed;
-    //Start tracking the time taken after successfully sending the message from the client
-    start_t = clock();
     
     // Check the socket for a reply from the server
     // A 'yes' means a file transfer can start. Anything else results in an exit.
@@ -102,12 +110,7 @@ int main(int argc, char *argv[])
         printf("Exiting...\n");
 	exit(1);
     }
-
-    //Stop tracking the time after successfully receiving a response from the server
-    end_t = clock();
-    time_elapsed = ((double) end_t - start_t) / CLOCKS_PER_SEC;
-    printf("Elapsed time between sending message to server and receiving response from server: %f seconds\n", time_elapsed);
-
+    
     if( strcmp(buf, "yes") == 0 ){
 	printf("A file transfer can start.\n");
     } else{
@@ -115,6 +118,71 @@ int main(int argc, char *argv[])
 	exit(1);
     }	
 
+    file = fopen(fname, "rb");
+    fseek(file, 0, SEEK_END);
+    file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    // Initialize a packet structure
+    int num_frags  = ceil(file_size/1000);
+//    printf("filename = %s\n", fname);
+//    printf("num_frags = %d\n", num_frags);
+    struct Packet packets[num_frags];
+    int bytes_remaining = ((int) file_size);
+
+    for(int i=0; i < num_frags; i++){
+//	printf("bytes_remaining: %d\n", bytes_remaining);
+	packets[i].total_frag = num_frags;
+	packets[i].frag_no = i+1;
+	packets[i].size = MIN(bytes_remaining, 1000);
+	packets[i].filename = fname;
+	fread(packets[i].filedata, packets[i].size, 1, file);
+//	printf("Fragment %d: %s\n", i, packets[i].filedata);
+	bytes_remaining -= packets[i].size;
+    }
+
+    char tot_frag[100];
+    char frag_num[100];
+    char size[100];
+    char *packet_string;
+    int pkt_str_pos = 0;
+    for(int i=0; i< num_frags; i++){
+
+        printf("1\n");	
+	snprintf(tot_frag, 99, "%d", packets[i].total_frag);
+	snprintf(frag_num, 99, "%d", packets[i].frag_no);
+	snprintf(size, 99, "%d", packets[i].size);
+	printf("tot_frag: %s, size of tot_frag: %lu", tot_frag, sizeof(tot_frag));
+
+	memcpy(packet_string, tot_frag, sizeof(*tot_frag));
+	pkt_str_pos += sizeof(*tot_frag);
+	printf("2\n");
+	memcpy(packet_string + pkt_str_pos, ":", 1);
+        pkt_str_pos += 1;
+	printf("3\n");
+	memcpy(packet_string + pkt_str_pos, frag_num, sizeof(*frag_num));
+	pkt_str_pos += sizeof(*frag_num);
+	memcpy(packet_string + pkt_str_pos, ":", 1);
+        pkt_str_pos += 1;
+	memcpy(packet_string + pkt_str_pos, size, sizeof(*size));
+	pkt_str_pos += sizeof(*size);
+	memcpy(packet_string + pkt_str_pos, ":", 1);    
+        pkt_str_pos += 1;
+	memcpy(packet_string + pkt_str_pos, packets[i].filename, sizeof(*packets[i].filename));
+        pkt_str_pos += sizeof(*packets[i].filename);
+	memcpy(packet_string + pkt_str_pos, ":", 1);
+        pkt_str_pos += 1;
+	memcpy(packet_string + pkt_str_pos, packets[i].filedata, sizeof(packets[i].filedata));
+
+	printf("packet string: %s\n", packet_string);
+
+	sent_count = sendto(sockfd, packet_string, sizeof(packet_string), 0, (struct sockaddr *)&server_addr, sockaddr_size );
+        if(sent_count == -1){
+                printf("Error sending packet fragment %d\n", pkt.frag_no);
+                printf("Exiting...\n");
+                exit(1);
+        }
+    }
+   
     // Close the socket
     close(sockfd);
     return 0;

@@ -6,6 +6,15 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+struct Packet{
+
+	unsigned int total_frag;
+	unsigned int frag_no;
+	unsigned int size;
+	char* filename;
+	char filedata[1000];
+
+};
 
 int main(int argc, char *argv[])
 {
@@ -20,7 +29,8 @@ int main(int argc, char *argv[])
     int sockfd, port, b, byte_count, s;
     socklen_t client_size;
     const int BUF_SIZE = 50;
-    
+
+
     // Convert the port value from string to int
     port = atoi(argv[1]);
     
