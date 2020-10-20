@@ -5,7 +5,6 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <time.h>
 #include <unistd.h>
 
 
@@ -80,9 +79,6 @@ int main(int argc, char *argv[])
     
     // Reset the buffer to empty
     bzero(buf, BUF_SIZE);
-	
-    //timer
-    clock_t start = clock();
     
     // Once the file is confirmed to exist, senf 'ftp' to the server
     sent_count = sendto(sockfd, "ftp", sizeof("ftp"), 0, (struct sockaddr *)&server_addr, sockaddr_size );    
@@ -100,11 +96,6 @@ int main(int argc, char *argv[])
         printf("Exiting...\n");
 	exit(1);
     }
-	
-    //timer
-    clock_t end = clock();
-    double time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("Round-trip time: %f seconds\n", time_used);
     
     if( strcmp(buf, "yes") == 0 ){
 	printf("A file transfer can start.\n");
