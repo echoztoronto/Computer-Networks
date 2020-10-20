@@ -99,11 +99,12 @@ int main(int argc, char *argv[])
     char filename[BUF_SIZE];
     char filedata[1000];
     FILE *file;
+    int packet_no = 1;
 
     // TO-DO: Figure out a way to get this snippet of code to cycle through all the packets sent by the client and write them to the correct file in order, sending
     // an ACK packet after each one. It currently works correctly for the first packet, but no subsequent packets. The do while loop may help.
 
-    //do{
+    while(1){
 
         byte_count = recvfrom(sockfd, packet_buf, sizeof(struct Packet), 0, (struct sockaddr *)&client_addr, &client_size);
         if(byte_count == -1) {
@@ -124,22 +125,31 @@ int main(int argc, char *argv[])
         printf("filename: %s\n", filename);
         printf("filedata: %s\n", filedata);
 
-        if(atoi(frag_no) == 1){
-            file = fopen(filename, "wb");
-            printf("File Opened\n");
+        if(atoi(frag_no) == packet_no){
+            
+            if(atoi(frag_no) == 1){
+                file = fopen(filename, "wb");
+                printf("File Opened\n");
+            }
+            fprintf(file, "%s", filedata);
         }
-        fprintf(file, "%s", filedata);
-
+        
         s = sendto(sockfd, "ACK", strlen("ACK")+1, 0, (struct sockaddr *)&client_addr, client_size);
         if(s == -1) {
             perror("Error sending 'ACK'\n");
             printf("Exiting...\n");
             exit(1);
         }
+        
+        
+        if(frag_no == total_frag) {
+            fclose(file);
+            break;
+        }
+        
+        packet_no++;
 
-        bzero(packet_buf, sizeof(struct Packet));
-
-    //} while(strcmp(total_frag, frag_no) != 0);
+    } 
 
     
     // Close the socket
