@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     // Ensure the appropriate number of args were included in the call
     if(argc != 3) {
         perror("Incorrect Usage");
-	printf("Call should be of form: deliver <server address> <server port number>\n Exiting...\n");
+	    printf("Call should be of form: deliver <server address> <server port number>\n Exiting...\n");
         exit(0);
     }
     
@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
     sockfd = socket(PF_INET, SOCK_DGRAM, 0);
     if(sockfd == -1) {
         perror("Error creating socket");
-	printf("Exiting...\n");
+	    printf("Exiting...\n");
         exit(1);
     }
     
@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     if(inet_aton(argv[1], &server_addr.sin_addr) == 0) {
         perror("Error converting IP address");
         printf("Exiting...\n");
-	exit(1);
+	    exit(1);
     }
     
     sockaddr_size = sizeof(server_addr);
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
     // If user input begins with anything other than 'ftp ', throw and error and exit
     if(buf[0] != 'f' || buf[1] != 't' || buf[2] != 'p' || buf[3] != ' ') {
         perror("Invalid message");
-	printf("Input should be of form: ftp <file name>\n Exiting...\n");
+	    printf("Input should be of form: ftp <file name>\n Exiting...\n");
         exit(1);
     }        
         
@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
     // Check if the file exists
     if(access(fname, F_OK) == -1) {
         perror("Error finding file");
-	printf("Exiting...\n");
+	    printf("Exiting...\n");
         exit(1);
     }
    
@@ -97,26 +97,28 @@ int main(int argc, char *argv[])
     // Once the file is confirmed to exist, senf 'ftp' to the server
     sent_count = sendto(sockfd, "ftp", sizeof("ftp"), 0, (struct sockaddr *)&server_addr, sockaddr_size );    
     if(sent_count == -1){
-	perror("Error sending 'ftp'");
-	printf("Exiting...\n");
-	exit(1);
+	    perror("Error sending 'ftp'");
+	    printf("Exiting...\n");
+	    exit(1);
     }
     
     // Check the socket for a reply from the server
     // A 'yes' means a file transfer can start. Anything else results in an exit.
     received_count = recvfrom(sockfd, buf, BUF_SIZE, 0, (struct sockaddr *)&server_addr, &sockaddr_size );
     if(received_count == -1){
-	perror("Error receiving message");
+	    perror("Error receiving message");
         printf("Exiting...\n");
-	exit(1);
+	    exit(1);
     }
     
     if( strcmp(buf, "yes") == 0 ){
-	printf("A file transfer can start.\n");
+	    printf("A file transfer can start.\n");
     } else{
         printf("Did not receive 'yes'\n Exiting...\n");
-	exit(1);
-    }	
+	    exit(1);
+    }
+
+    bzero(buf, BUF_SIZE);	
 
     file = fopen(fname, "rb");
     fseek(file, 0, SEEK_END);
@@ -124,62 +126,76 @@ int main(int argc, char *argv[])
     fseek(file, 0, SEEK_SET);
     // Initialize a packet structure
     int num_frags  = ceil(file_size/1000);
-//    printf("filename = %s\n", fname);
-//    printf("num_frags = %d\n", num_frags);
     struct Packet packets[num_frags];
     int bytes_remaining = ((int) file_size);
 
     for(int i=0; i < num_frags; i++){
-//	printf("bytes_remaining: %d\n", bytes_remaining);
-	packets[i].total_frag = num_frags;
-	packets[i].frag_no = i+1;
-	packets[i].size = MIN(bytes_remaining, 1000);
-	packets[i].filename = fname;
-	fread(packets[i].filedata, packets[i].size, 1, file);
-//	printf("Fragment %d: %s\n", i, packets[i].filedata);
-	bytes_remaining -= packets[i].size;
+	    packets[i].total_frag = num_frags;
+	    packets[i].frag_no = i+1;
+	    packets[i].size = MIN(bytes_remaining, 1000);
+	    packets[i].filename = malloc(strlen(fname) + 1);
+	    strcpy(packets[i].filename, fname);
+	    fread(packets[i].filedata, packets[i].size, 1, file);
+	    bytes_remaining -= packets[i].size;
     }
 
-    char tot_frag[100];
-    char frag_num[100];
-    char size[100];
-    char *packet_string;
+    char tot_frag[5];
+    char frag_num[5];
+    char size[5];
+    char packet_string[sizeof(struct Packet)];
     int pkt_str_pos = 0;
+    
     for(int i=0; i< num_frags; i++){
 
-        printf("1\n");	
-	snprintf(tot_frag, 99, "%d", packets[i].total_frag);
-	snprintf(frag_num, 99, "%d", packets[i].frag_no);
-	snprintf(size, 99, "%d", packets[i].size);
-	printf("tot_frag: %s, size of tot_frag: %lu", tot_frag, sizeof(tot_frag));
+	    bzero(packet_string, sizeof(struct Packet));
+	    sprintf(packet_string, "%u", packets[i].total_frag);
+	    pkt_str_pos += (sizeof(packets[i].total_frag)/sizeof(char));
+	    sprintf(packet_string + pkt_str_pos, ":");
+	    pkt_str_pos += 1;
+	    sprintf(packet_string + pkt_str_pos, "%u", packets[i].frag_no);
+	    pkt_str_pos += (sizeof(packets[i].frag_no)/sizeof(char));
+	    sprintf(packet_string + pkt_str_pos, ":");
+        pkt_str_pos += 1;
+	    sprintf(packet_string + pkt_str_pos, "%u", packets[i].size);
+	    pkt_str_pos += (sizeof(packets[i].size)/sizeof(char));
+	    sprintf(packet_string + pkt_str_pos, ":");
+        pkt_str_pos += 1;
+	
+	    memcpy(packet_string + pkt_str_pos, packets[i].filename, strlen(packets[i].filename));
+	    pkt_str_pos += BUF_SIZE;
+	    memcpy(packet_string + pkt_str_pos, ":", 1);
+        pkt_str_pos += 1;
+	    memcpy(packet_string + pkt_str_pos, packets[i].filedata, packets[i].size);
+	
+    /*
+	printf("packet_string:\n");
+	for(int j=0; j<(sizeof(packet_string)/sizeof(char)); j++){
+		printf("%c", packet_string[j]);
+	}*/
+        
+        printf("Sending packet fragment %u\n", packets[i].frag_no);
+	    sent_count = sendto( sockfd, packet_string, sizeof(struct Packet), 0, (struct sockaddr *)&server_addr, sockaddr_size );
+        if(sent_count == 0){
+            printf("Successfully sent packet fragment %u\n", packets[i].frag_no);
+        } else if(sent_count == -1){
+		    perror("Error");
+            printf("Error sending packet fragment %u\n", packets[i].frag_no);
+            printf("Exiting...\n");
+            exit(1);
+        }
 
-	memcpy(packet_string, tot_frag, sizeof(*tot_frag));
-	pkt_str_pos += sizeof(*tot_frag);
-	printf("2\n");
-	memcpy(packet_string + pkt_str_pos, ":", 1);
-        pkt_str_pos += 1;
-	printf("3\n");
-	memcpy(packet_string + pkt_str_pos, frag_num, sizeof(*frag_num));
-	pkt_str_pos += sizeof(*frag_num);
-	memcpy(packet_string + pkt_str_pos, ":", 1);
-        pkt_str_pos += 1;
-	memcpy(packet_string + pkt_str_pos, size, sizeof(*size));
-	pkt_str_pos += sizeof(*size);
-	memcpy(packet_string + pkt_str_pos, ":", 1);    
-        pkt_str_pos += 1;
-	memcpy(packet_string + pkt_str_pos, packets[i].filename, sizeof(*packets[i].filename));
-        pkt_str_pos += sizeof(*packets[i].filename);
-	memcpy(packet_string + pkt_str_pos, ":", 1);
-        pkt_str_pos += 1;
-	memcpy(packet_string + pkt_str_pos, packets[i].filedata, sizeof(packets[i].filedata));
-
-	printf("packet string: %s\n", packet_string);
-
-	sent_count = sendto(sockfd, packet_string, sizeof(packet_string), 0, (struct sockaddr *)&server_addr, sockaddr_size );
-        if(sent_count == -1){
-                printf("Error sending packet fragment %d\n", pkt.frag_no);
-                printf("Exiting...\n");
-                exit(1);
+        received_count = recvfrom( sockfd, buf, BUF_SIZE, 0, (struct sockaddr *)&server_addr, &sockaddr_size );
+        if(received_count == -1){
+            perror("Error receiving message");
+            printf("Exiting...\n");
+            exit(1);
+        }
+    
+        if( strcmp(buf, "ACK") == 0 ){
+            printf("Server received packet %u.\n", packets[i].frag_no);
+        } else{
+            printf("Did not receive 'ACK'\n Exiting...\n");
+            exit(1);
         }
     }
    
