@@ -167,14 +167,6 @@ int main(int argc, char *argv[])
             free(packet_buf);
             break;
         }
-        
-        free(total_frag);
-        free(frag_no);
-        free(size);
-        free(filename);
-        free(filedata);
-        free(packet_buf);
-
     } 
 
     
