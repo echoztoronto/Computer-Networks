@@ -143,9 +143,11 @@ int main(int argc, char *argv[])
     char frag_num[5];
     char size[5];
     char packet_string[sizeof(struct Packet)];
-    int pkt_str_pos = 0;
+    int pkt_str_pos;
     
-    for(int i=0; i< num_frags; i++){
+    for(int i=0; i<num_frags; i++){
+
+        pkt_str_pos = 0;
 
 	    bzero(packet_string, sizeof(struct Packet));
 	    sprintf(packet_string, "%u", packets[i].total_frag);
@@ -167,11 +169,10 @@ int main(int argc, char *argv[])
         pkt_str_pos += 1;
 	    memcpy(packet_string + pkt_str_pos, packets[i].filedata, packets[i].size);
 	
-    /*
-	printf("packet_string:\n");
-	for(int j=0; j<(sizeof(packet_string)/sizeof(char)); j++){
-		printf("%c", packet_string[j]);
-	}*/
+    
+	    /*for(int j=0; j<(sizeof(packet_string)/sizeof(char)); j++){
+		    printf("packet_string[%d]: %c\n", j, packet_string[j]);
+	    }*/
         
         printf("Sending packet fragment %u\n", packets[i].frag_no);
 	    sent_count = sendto( sockfd, packet_string, sizeof(struct Packet), 0, (struct sockaddr *)&server_addr, sockaddr_size );

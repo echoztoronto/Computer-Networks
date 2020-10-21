@@ -57,9 +57,9 @@ int main(int argc, char *argv[])
     }
     
     char buf[BUF_SIZE];
-    char packet_buf[sizeof(struct Packet)];
+    char *packet_buf;//[sizeof(struct Packet)];
     bzero(buf,BUF_SIZE);
-    bzero(packet_buf, sizeof(struct Packet));
+    //bzero(packet_buf, sizeof(struct Packet));
     
     struct sockaddr_in client_addr;
     client_size = sizeof client_addr;
@@ -93,18 +93,19 @@ int main(int argc, char *argv[])
 
     int size_int = sizeof(unsigned int)/sizeof(char) + 1;
     int data_size;
-    char total_frag[size_int];
-    char frag_no[size_int];
-    char size[size_int];
-    char filename[BUF_SIZE];
-    char filedata[1000];
+    char *total_frag;//[size_int];
+    char *frag_no;//[size_int];
+    char *size;//[size_int];
+    char *filename;//[BUF_SIZE];
+    char *filedata;//[1000];
     FILE *file;
-    int packet_no = 1;
 
     // TO-DO: Figure out a way to get this snippet of code to cycle through all the packets sent by the client and write them to the correct file in order, sending
     // an ACK packet after each one. It currently works correctly for the first packet, but no subsequent packets. The do while loop may help.
 
     while(1){
+
+        packet_buf = malloc(sizeof(struct Packet));
 
         byte_count = recvfrom(sockfd, packet_buf, sizeof(struct Packet), 0, (struct sockaddr *)&client_addr, &client_size);
         if(byte_count == -1) {
@@ -112,6 +113,17 @@ int main(int argc, char *argv[])
             printf("Exiting...\n");
             exit(1);
         }
+
+        /*printf("packet_buf:\n");
+        for(int j=0; j<sizeof(struct Packet); j++){
+            printf("%c", packet_buf[j]);
+        }*/
+
+        total_frag = malloc(size_int);
+        frag_no = malloc(size_int);
+        size = malloc(size_int);
+        filename = malloc(BUF_SIZE);
+        filedata = malloc(1000);
 
         memcpy(total_frag, &packet_buf, size_int);
         memcpy(frag_no, &packet_buf[size_int], size_int);
@@ -125,14 +137,13 @@ int main(int argc, char *argv[])
         printf("filename: %s\n", filename);
         printf("filedata: %s\n", filedata);
 
-        if(atoi(frag_no) == packet_no){
-            
-            if(atoi(frag_no) == 1){
-                file = fopen(filename, "wb");
-                printf("File Opened\n");
-            }
-            fprintf(file, "%s", filedata);
+        if(atoi(frag_no) == 1){
+            file = fopen(filename, "wb");
+            printf("File Opened\n");
         }
+
+        printf("Writing to file: %s\n", filename);
+        fprintf(file, "%s", filedata);
         
         s = sendto(sockfd, "ACK", strlen("ACK")+1, 0, (struct sockaddr *)&client_addr, client_size);
         if(s == -1) {
@@ -140,14 +151,27 @@ int main(int argc, char *argv[])
             printf("Exiting...\n");
             exit(1);
         }
-        
-        
-        if(frag_no == total_frag) {
+
+        //bzero(packet_buf, sizeof(struct Packet));
+
+        if(strcmp(frag_no, total_frag) == 0) {
+            printf("Closing file: %s\n", filename);
             fclose(file);
+            free(total_frag);
+            free(frag_no);
+            free(size);
+            free(filename);
+            free(filedata);
+            free(packet_buf);
             break;
         }
         
-        packet_no++;
+        free(total_frag);
+        free(frag_no);
+        free(size);
+        free(filename);
+        free(filedata);
+        free(packet_buf);
 
     } 
 
