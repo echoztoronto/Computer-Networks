@@ -91,7 +91,8 @@ int main(int argc, char *argv[])
         }
     }
 
-    int size_int = sizeof(unsigned int)/sizeof(char) + 1;
+    //int size_int = sizeof(unsigned int)/sizeof(char) + 1;
+    int size_int = 4;
     int data_size;
     int packet_size = 1100;
     char *total_frag;//[size_int];
@@ -115,10 +116,12 @@ int main(int argc, char *argv[])
             exit(1);
         }
 
-        /*printf("packet_buf:\n");
-        for(int j=0; j<sizeof(struct Packet); j++){
-            printf("%c", packet_buf[j]);
-        }*/
+        /*
+        printf("packet_buf:\n");
+        for(int j=0; j<10; j++){
+            printf("packet_buf[%d]: %c\n", j, packet_buf[j]);
+        }
+        */
 
         total_frag = malloc(size_int);
         frag_no = malloc(size_int);
@@ -126,26 +129,29 @@ int main(int argc, char *argv[])
         filename = malloc(BUF_SIZE);
         filedata = malloc(1000);
 
-        memcpy(total_frag, &packet_buf, size_int);
-        memcpy(frag_no, &packet_buf[size_int], size_int);
-        memcpy(size, &packet_buf[2*size_int], size_int);
-        memcpy(filename, &packet_buf[3*size_int], BUF_SIZE);
-        memcpy(filedata, &packet_buf[3*size_int+BUF_SIZE+1], 1000);
-        /*printf("total_frag: %s\n", total_frag);
+        memcpy(total_frag, &packet_buf[0], size_int);
+        memcpy(frag_no, &packet_buf[size_int+1], size_int);
+        memcpy(size, &packet_buf[2*size_int+2], size_int);
+        memcpy(filename, &packet_buf[3*size_int+3], BUF_SIZE);
+        memcpy(filedata, &packet_buf[3*size_int+BUF_SIZE+4], 1000);
+        
+        
+        printf("total_frag: %s\n", total_frag);
         printf("frag_no: %s\n", frag_no);
         printf("size: %s\n", size);
-        printf("filename: %s\n", filename);*/
+        printf("filename: %s\n", filename);
         printf("filedata %s: %s\n", frag_no, filedata);
-
+        
+         
         if(atoi(frag_no) == 1){
             file = fopen(filename, "wb");
             printf("File Opened\n");
         }
 
         printf("Writing to file: %s\n", filename);
-        printf("filedata: %s", filedata);
         //fprintf(file, "%s", filedata);
         fwrite(filedata, sizeof(char), atoi(size), file);
+        printf("finished writing\n");
         
         s = sendto(sockfd, "ACK", strlen("ACK")+1, 0, (struct sockaddr *)&client_addr, client_size);
         if(s == -1) {
@@ -153,6 +159,15 @@ int main(int argc, char *argv[])
             printf("Exiting...\n");
             exit(1);
         }
+        /*
+        for(int j=0; j<strlen(frag_no); j++){
+            printf("frag_no[%d]: %c\n", j, frag_no[j]);
+        }
+        
+        for(int j=0; j<strlen(total_frag); j++){
+            printf("total_frag[%d]: %c\n", j, total_frag[j]);
+        }
+        */
 
         //bzero(packet_buf, sizeof(struct Packet));
         

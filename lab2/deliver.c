@@ -182,14 +182,15 @@ int main(int argc, char *argv[])
 	
         if(i==0){
             printf("packet_string %d:\n", i+1);
-            for(int j=0; j<packet_size; j++){
-                printf("%c", packet_string[j]);
-            }
 	       /*for(int j=0; j<strlen(packets[i].filedata); j++){
                 printf("filedata[%d]: %c\n", j, packets[i].filedata[j]);
             }
         }*/
         }
+        
+        for(int j=0; j<packet_size; j++){
+                printf("%c", packet_string[j]);
+            }
         
         printf("Sending packet fragment %u\n", packets[i].frag_no);
 	    sent_count = sendto( sockfd, packet_string, packet_size, 0, (struct sockaddr *)&server_addr, sockaddr_size );
@@ -219,7 +220,6 @@ int main(int argc, char *argv[])
         //free(packet_string);
         free(packets[i].filename);
         packet_size = 0;
-
     }
    
     // Close the socket
