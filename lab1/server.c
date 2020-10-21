@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 	printf("Exiting...\n");
         exit(1);
     }
-    
+
     // If the message received from the client is 'ftp', reply to the client with 'yes'
     // If the message received is anything else, reply to the client with 'no'
     if(strcmp(buf, "ftp") == 0) {

@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <time.h>
 
 
 int main(int argc, char *argv[])
@@ -87,6 +88,11 @@ int main(int argc, char *argv[])
 	printf("Exiting...\n");
 	exit(1);
     }
+
+    clock_t start_t, end_t;
+    double time_elapsed;
+    //Start tracking the time taken after successfully sending the message from the client
+    start_t = clock();
     
     // Check the socket for a reply from the server
     // A 'yes' means a file transfer can start. Anything else results in an exit.
@@ -96,7 +102,12 @@ int main(int argc, char *argv[])
         printf("Exiting...\n");
 	exit(1);
     }
-    
+
+    //Stop tracking the time after successfully receiving a response from the server
+    end_t = clock();
+    time_elapsed = ((double) end_t - start_t) / CLOCKS_PER_SEC;
+    printf("Elapsed time between sending message to server and receiving response from server: %f seconds\n", time_elapsed);
+
     if( strcmp(buf, "yes") == 0 ){
 	printf("A file transfer can start.\n");
     } else{
