@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 
     while(1){
 
-        packet_buf = malloc(sizeof(struct Packet));
+        packet_buf = malloc(packet_size);
 
         byte_count = recvfrom(sockfd, packet_buf, packet_size, 0, (struct sockaddr *)&client_addr, &client_size);
         if(byte_count == -1) {
@@ -124,13 +124,13 @@ int main(int argc, char *argv[])
         frag_no = malloc(size_int);
         size = malloc(size_int);
         filename = malloc(BUF_SIZE);
-        filedata = malloc(packet_size);
+        filedata = malloc(1000);
 
         memcpy(total_frag, &packet_buf, size_int);
         memcpy(frag_no, &packet_buf[size_int], size_int);
         memcpy(size, &packet_buf[2*size_int], size_int);
         memcpy(filename, &packet_buf[3*size_int], BUF_SIZE);
-        memcpy(filedata, &packet_buf[3*size_int+BUF_SIZE+1], packet_size);
+        memcpy(filedata, &packet_buf[3*size_int+BUF_SIZE+1], 1000);
         /*printf("total_frag: %s\n", total_frag);
         printf("frag_no: %s\n", frag_no);
         printf("size: %s\n", size);
@@ -143,7 +143,9 @@ int main(int argc, char *argv[])
         }
 
         printf("Writing to file: %s\n", filename);
-        fprintf(file, "%s", filedata);
+        printf("filedata: %s", filedata);
+        //fprintf(file, "%s", filedata);
+        fwrite(filedata, sizeof(char), atoi(size), file);
         
         s = sendto(sockfd, "ACK", strlen("ACK")+1, 0, (struct sockaddr *)&client_addr, client_size);
         if(s == -1) {
@@ -153,7 +155,7 @@ int main(int argc, char *argv[])
         }
 
         //bzero(packet_buf, sizeof(struct Packet));
-
+        
         if(strcmp(frag_no, total_frag) == 0) {
             printf("Closing file: %s\n", filename);
             fclose(file);

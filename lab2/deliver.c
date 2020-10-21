@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
 	    pkt_str_pos += BUF_SIZE;
 	    memcpy(packet_string + pkt_str_pos, ":", 1);
         pkt_str_pos += 1;
-	    memcpy(packet_string + pkt_str_pos, packets[i].filedata, packet_size);
+	    memcpy(packet_string + pkt_str_pos, packets[i].filedata, 1000);
 
         printf("Size of total_frag: %lu\n", sizeof(packets[i].total_frag));
         printf("Size of frag_no: %lu\n", sizeof(packets[i].frag_no));
