@@ -9,6 +9,7 @@
 #include <math.h>
 #define MIN(a, b) ((a<b) ? a : b)
 
+// define the packet structure as specified in lab handout
 struct Packet{
 
 	unsigned int total_frag;
@@ -120,40 +121,50 @@ int main(int argc, char *argv[])
 
     bzero(buf, BUF_SIZE);	
 
+    // open the file specified by the user
     file = fopen(fname, "rb");
+    // use fseek() to scan to the end and determine the size of the file, then seek back to the beginning
     fseek(file, 0, SEEK_END);
     file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
-    // Initialize a packet structure
+    // using the file size, determine the number of 1000 length fragments necessary and create an array of packets of appropriate length
     int num_frags  = ceil(file_size/1000);
     struct Packet packets[num_frags];
-    int bytes_remaining = ((int) file_size);
+    int data_remaining = ((int) file_size);
 
+    // for each packet, assign the fields their correct values
+    // for the size field, the last packet will likely be smaller than 1000, so use the MIN function
+    // dynamically allocate the filename field
     for(int i=0; i < num_frags; i++){
 	    packets[i].total_frag = num_frags;
 	    packets[i].frag_no = i+1;
-	    packets[i].size = MIN(bytes_remaining, 1000);
+	    packets[i].size = MIN(data_remaining, 1000);
 	    packets[i].filename = malloc(strlen(fname) + 1);
 	    strcpy(packets[i].filename, fname);
+        // read "size" amount of the file contents into the filedata field for this packet
 	    fread(packets[i].filedata, packets[i].size, 1, file);
-	    bytes_remaining -= packets[i].size;
+	    data_remaining -= packets[i].size;
     }
 
+    // these char arrays store the converted unsigned int fields of the packet
     char tot_frag[5];
     char frag_num[5];
     char size[5];
-    char packet_string[1100];//[sizeof(struct Packet)];
+    // this packet_string will store the entire concatenated packet to be sent to the server
+    // its size is set to 1100 to ensure it will be long enough for even the longest packets
+    int packet_size = 1100;
+    char packet_string[packet_size];
     int pkt_str_pos;
-    int packet_size;
     
     for(int i=0; i<num_frags; i++){
 
-        packet_size = 1100;//(3*sizeof(unsigned int) + sizeof(packets[i].filename) + sizeof(packets[i].filedata))/sizeof(char);
-        //packet_string = malloc(packet_size);
-
         pkt_str_pos = 0;
 
-	    bzero(packet_string, sizeof(struct Packet));
+        // reset the packet string to be reused each time
+	    bzero(packet_string, packet_size);
+        // we can use sprintf to convert the unsigned int fields to chars in the packet_string
+        // use the pkt_str_pos variable to keep track of the index in packet_string
+        // add colons between each field
 	    sprintf(packet_string, "%u", packets[i].total_frag);
 	    pkt_str_pos += (sizeof(packets[i].total_frag)/sizeof(char));
 	    sprintf(packet_string + pkt_str_pos, ":");
@@ -166,44 +177,25 @@ int main(int argc, char *argv[])
 	    pkt_str_pos += (sizeof(packets[i].size)/sizeof(char));
 	    sprintf(packet_string + pkt_str_pos, ":");
         pkt_str_pos += 1;
-	
+
+	    // use memcpy to copy the filename and filedata fields into packet_string in case they contain binary data
 	    memcpy(packet_string + pkt_str_pos, packets[i].filename, BUF_SIZE);
 	    pkt_str_pos += BUF_SIZE;
 	    memcpy(packet_string + pkt_str_pos, ":", 1);
         pkt_str_pos += 1;
 	    memcpy(packet_string + pkt_str_pos, packets[i].filedata, 1000);
-
-        /*
-        printf("Size of total_frag: %lu\n", sizeof(packets[i].total_frag));
-        printf("Size of frag_no: %lu\n", sizeof(packets[i].frag_no));
-        printf("Size of size: %lu\n", sizeof(packets[i].size));
-        printf("Size of filename: %lu\n", sizeof(packets[i].filename));
-        printf("Size of filedata: %d\n", packet_size);
-        printf("packet_size: %d\n", packet_size);
-        */
-         
-        if(i==0){
-            printf("packet_string %d:\n", i+1);
-	       /*for(int j=0; j<strlen(packets[i].filedata); j++){
-                printf("filedata[%d]: %c\n", j, packets[i].filedata[j]);
-            }*/
-        }
         
-        for(int j=0; j<packet_size; j++){
-                printf("%c", packet_string[j]);
-            }
-        
-        printf("Sending packet fragment %u\n", packets[i].frag_no);
+        // send the current packet to the server
 	    sent_count = sendto( sockfd, packet_string, packet_size, 0, (struct sockaddr *)&server_addr, sockaddr_size );
-        if(sent_count == 0){
-            printf("Successfully sent packet fragment %u\n", packets[i].frag_no);
-        } else if(sent_count == -1){
+        if(sent_count == -1){
 		    perror("Error");
             printf("Error sending packet fragment %u\n", packets[i].frag_no);
             printf("Exiting...\n");
             exit(1);
         }
+        printf("Sent packet fragment %u of %u to server.\n", packets[i].frag_no, packets[i].total_frag);
 
+        //receive the expected reply message from the server
         received_count = recvfrom( sockfd, buf, BUF_SIZE, 0, (struct sockaddr *)&server_addr, &sockaddr_size );
         if(received_count == -1){
             perror("Error receiving message");
@@ -211,19 +203,21 @@ int main(int argc, char *argv[])
             exit(1);
         }
     
-        if( strcmp(buf, "ACK") == 0 ){
-            printf("Server received packet %u.\n", packets[i].frag_no);
-        } else{
+        // if the message received from the server is ACK, send the next packet
+        // any other message is cause to exit the program and stop the file transfer
+        if( strcmp(buf, "ACK") != 0 ){
             printf("Did not receive 'ACK'\n Exiting...\n");
             exit(1);
         }
 
-        //free(packet_string);
+        // free the dynamically allocated memory
         free(packets[i].filename);
-        packet_size = 0;
     }
+
+    printf("File transfer complete!\n");
    
-    // Close the socket
+    // Close the file and the socket
+    fclose(file);
     close(sockfd);
     return 0;
 }

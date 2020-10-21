@@ -6,16 +6,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-struct Packet{
-
-	unsigned int total_frag;
-	unsigned int frag_no;
-	unsigned int size;
-	char* filename;
-	char filedata[1000];
-
-};
-
 int main(int argc, char *argv[])
 {
     // Ensure the appropriate number of args were included in the call	
@@ -56,10 +46,11 @@ int main(int argc, char *argv[])
         exit(1);
     }
     
+    // buf will hold the first message sent from the client (usually "ftp ...")
     char buf[BUF_SIZE];
-    char *packet_buf;//[sizeof(struct Packet)];
+    // packet_buf will be used to point to the packets received from the client during the file transfer
+    char *packet_buf;
     bzero(buf,BUF_SIZE);
-    //bzero(packet_buf, sizeof(struct Packet));
     
     struct sockaddr_in client_addr;
     client_size = sizeof client_addr;
@@ -91,20 +82,25 @@ int main(int argc, char *argv[])
         }
     }
 
+    // size_int stores the size of the unsigned int fields of the packet
+    // packet_size is set to 1100 to ensure it is long enough to receive even the longest packets sent from the client
+    // the char arrays will be used to store the corresponding field of the received packet
     int size_int = 4;
-    int data_size;
     int packet_size = 1100;
-    char *total_frag;//[size_int];
-    char *frag_no;//[size_int];
-    char *size;//[size_int];
-    char *filename;//[BUF_SIZE];
-    char *filedata;//[1000];
+    char *total_frag;
+    char *frag_no;
+    char *size;
+    char *filename;
+    char *filedata;
+    // the file pointer to be used when writing to the file being transferred
     FILE *file;
 
     while(1){
 
+        // allocate a packet_size section of memory to the packet_buf pointer
         packet_buf = malloc(packet_size);
 
+        // receive the first packet from the client into packet_buf
         byte_count = recvfrom(sockfd, packet_buf, packet_size, 0, (struct sockaddr *)&client_addr, &client_size);
         if(byte_count == -1) {
             perror("Error receiving");
@@ -112,40 +108,33 @@ int main(int argc, char *argv[])
             exit(1);
         }
 
-        /*
-        printf("packet_buf:\n");
-        for(int j=0; j<10; j++){
-            printf("packet_buf[%d]: %c\n", j, packet_buf[j]);
-        }
-        */
-
+        // allocate the correct amounts of memory to each packet field char array (filename is set to BUF_SIZE in deliver.c as well)
         total_frag = malloc(size_int);
         frag_no = malloc(size_int);
         size = malloc(size_int);
         filename = malloc(BUF_SIZE);
         filedata = malloc(1000);
 
+        // copy data from packet_buf into the correct char arrays
+        // memcpy is used to avoid string functions (strcpy) because data could be in binary format
+        // note that the packet_buf is broken down based on the sizes of each field, so as to avoid using strtok() to split by a delimiter
         memcpy(total_frag, &packet_buf[0], size_int);
         memcpy(frag_no, &packet_buf[size_int+1], size_int);
         memcpy(size, &packet_buf[2*size_int+2], size_int);
         memcpy(filename, &packet_buf[3*size_int+3], BUF_SIZE);
         memcpy(filedata, &packet_buf[3*size_int+BUF_SIZE+4], 1000);
         
-        //printf("total_frag: %s\n", total_frag);
-        //printf("frag_no: %s\n", frag_no);
-        //printf("size: %s\n", size);
-        //printf("filename: %s\n", filename);
-        //printf("filedata %s: %s\n", frag_no, filedata);
-        
+        // if this is the first packet being received, open or create a file called "filename"
         if(atoi(frag_no) == 1){
             file = fopen(filename, "wb");
-            printf("File Opened\n");
+            printf("Creating file: %s\n", filename);
         }
 
-        printf("Writing to file: %s\n", filename);
+        // use the size field to determine the amount of data to be written to the file from the filedata field
+        printf("Writing packet fragment %s of %s to file: %s\n", frag_no, total_frag, filename);
         fwrite(filedata, sizeof(char), atoi(size), file);
-        printf("Finished writing\n");
         
+        // send an ACK back to the client to indicate that the packet has been received
         s = sendto(sockfd, "ACK", strlen("ACK")+1, 0, (struct sockaddr *)&client_addr, client_size);
         if(s == -1) {
             perror("Error sending 'ACK'\n");
@@ -153,6 +142,8 @@ int main(int argc, char *argv[])
             exit(1);
         }
         
+        // if the current frag_no is equal to total_frag this is the last packet to be received
+        // free all dynamically allocated memory and close the file
         if(strcmp(frag_no, total_frag) == 0) {
             printf("Closing file: %s\n", filename);
             fclose(file);
@@ -164,7 +155,9 @@ int main(int argc, char *argv[])
             free(packet_buf);
             break;
         }
-    } 
+    }
+
+    printf("File transfer complete!\n");
 
     // Close the socket
     close(sockfd);
