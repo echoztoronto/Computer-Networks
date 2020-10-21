@@ -93,6 +93,7 @@ int main(int argc, char *argv[])
 
     int size_int = sizeof(unsigned int)/sizeof(char) + 1;
     int data_size;
+    int packet_size = 1100;
     char *total_frag;//[size_int];
     char *frag_no;//[size_int];
     char *size;//[size_int];
@@ -107,7 +108,7 @@ int main(int argc, char *argv[])
 
         packet_buf = malloc(sizeof(struct Packet));
 
-        byte_count = recvfrom(sockfd, packet_buf, sizeof(struct Packet), 0, (struct sockaddr *)&client_addr, &client_size);
+        byte_count = recvfrom(sockfd, packet_buf, packet_size, 0, (struct sockaddr *)&client_addr, &client_size);
         if(byte_count == -1) {
             perror("Error receiving");
             printf("Exiting...\n");
@@ -123,19 +124,18 @@ int main(int argc, char *argv[])
         frag_no = malloc(size_int);
         size = malloc(size_int);
         filename = malloc(BUF_SIZE);
-        filedata = malloc(1000);
+        filedata = malloc(packet_size);
 
         memcpy(total_frag, &packet_buf, size_int);
         memcpy(frag_no, &packet_buf[size_int], size_int);
         memcpy(size, &packet_buf[2*size_int], size_int);
-        data_size = atoi(size);
         memcpy(filename, &packet_buf[3*size_int], BUF_SIZE);
-        memcpy(filedata, &packet_buf[3*size_int+BUF_SIZE+1], data_size);
-        printf("total_frag: %s\n", total_frag);
+        memcpy(filedata, &packet_buf[3*size_int+BUF_SIZE+1], packet_size);
+        /*printf("total_frag: %s\n", total_frag);
         printf("frag_no: %s\n", frag_no);
         printf("size: %s\n", size);
-        printf("filename: %s\n", filename);
-        printf("filedata: %s\n", filedata);
+        printf("filename: %s\n", filename);*/
+        printf("filedata %s: %s\n", frag_no, filedata);
 
         if(atoi(frag_no) == 1){
             file = fopen(filename, "wb");

@@ -142,10 +142,14 @@ int main(int argc, char *argv[])
     char tot_frag[5];
     char frag_num[5];
     char size[5];
-    char packet_string[sizeof(struct Packet)];
+    char packet_string[1100];//[sizeof(struct Packet)];
     int pkt_str_pos;
+    int packet_size;
     
     for(int i=0; i<num_frags; i++){
+
+        packet_size = 1100;//(3*sizeof(unsigned int) + sizeof(packets[i].filename) + sizeof(packets[i].filedata))/sizeof(char);
+        //packet_string = malloc(packet_size);
 
         pkt_str_pos = 0;
 
@@ -163,19 +167,32 @@ int main(int argc, char *argv[])
 	    sprintf(packet_string + pkt_str_pos, ":");
         pkt_str_pos += 1;
 	
-	    memcpy(packet_string + pkt_str_pos, packets[i].filename, strlen(packets[i].filename));
+	    memcpy(packet_string + pkt_str_pos, packets[i].filename, BUF_SIZE);
 	    pkt_str_pos += BUF_SIZE;
 	    memcpy(packet_string + pkt_str_pos, ":", 1);
         pkt_str_pos += 1;
-	    memcpy(packet_string + pkt_str_pos, packets[i].filedata, packets[i].size);
+	    memcpy(packet_string + pkt_str_pos, packets[i].filedata, packet_size);
+
+        printf("Size of total_frag: %lu\n", sizeof(packets[i].total_frag));
+        printf("Size of frag_no: %lu\n", sizeof(packets[i].frag_no));
+        printf("Size of size: %lu\n", sizeof(packets[i].size));
+        printf("Size of filename: %lu\n", sizeof(packets[i].filename));
+        printf("Size of filedata: %d\n", packet_size);
+        printf("packet_size: %d\n", packet_size);
 	
-    
-	    /*for(int j=0; j<(sizeof(packet_string)/sizeof(char)); j++){
-		    printf("packet_string[%d]: %c\n", j, packet_string[j]);
-	    }*/
+        if(i==0){
+            printf("packet_string %d:\n", i+1);
+            for(int j=0; j<packet_size; j++){
+                printf("%c", packet_string[j]);
+            }
+	       /*for(int j=0; j<strlen(packets[i].filedata); j++){
+                printf("filedata[%d]: %c\n", j, packets[i].filedata[j]);
+            }
+        }*/
+        }
         
         printf("Sending packet fragment %u\n", packets[i].frag_no);
-	    sent_count = sendto( sockfd, packet_string, sizeof(struct Packet), 0, (struct sockaddr *)&server_addr, sockaddr_size );
+	    sent_count = sendto( sockfd, packet_string, packet_size, 0, (struct sockaddr *)&server_addr, sockaddr_size );
         if(sent_count == 0){
             printf("Successfully sent packet fragment %u\n", packets[i].frag_no);
         } else if(sent_count == -1){
@@ -198,6 +215,11 @@ int main(int argc, char *argv[])
             printf("Did not receive 'ACK'\n Exiting...\n");
             exit(1);
         }
+
+        //free(packet_string);
+        free(packets[i].filename);
+        packet_size = 0;
+
     }
    
     // Close the socket
