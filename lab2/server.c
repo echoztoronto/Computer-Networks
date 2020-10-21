@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
         }
 
         // use the size field to determine the amount of data to be written to the file from the filedata field
-        printf("Writing packet fragment %s of %s to file: %s\n", frag_no, total_frag, filename);
+        //printf("Writing packet fragment %s of %s to file: %s\n", frag_no, total_frag, filename);
         fwrite(filedata, sizeof(char), atoi(size), file);
         
         // send an ACK back to the client to indicate that the packet has been received
@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
         // if the current frag_no is equal to total_frag this is the last packet to be received
         // free all dynamically allocated memory and close the file
         if(strcmp(frag_no, total_frag) == 0) {
-            printf("Closing file: %s\n", filename);
+            //printf("Closing file: %s\n", filename);
             fclose(file);
             free(total_frag);
             free(frag_no);

@@ -193,7 +193,7 @@ int main(int argc, char *argv[])
             printf("Exiting...\n");
             exit(1);
         }
-        printf("Sent packet fragment %u of %u to server.\n", packets[i].frag_no, packets[i].total_frag);
+        //printf("Sent packet fragment %u of %u to server.\n", packets[i].frag_no, packets[i].total_frag);
 
         //receive the expected reply message from the server
         received_count = recvfrom( sockfd, buf, BUF_SIZE, 0, (struct sockaddr *)&server_addr, &sockaddr_size );
