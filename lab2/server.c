@@ -91,7 +91,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    //int size_int = sizeof(unsigned int)/sizeof(char) + 1;
     int size_int = 4;
     int data_size;
     int packet_size = 1100;
@@ -101,9 +100,6 @@ int main(int argc, char *argv[])
     char *filename;//[BUF_SIZE];
     char *filedata;//[1000];
     FILE *file;
-
-    // TO-DO: Figure out a way to get this snippet of code to cycle through all the packets sent by the client and write them to the correct file in order, sending
-    // an ACK packet after each one. It currently works correctly for the first packet, but no subsequent packets. The do while loop may help.
 
     while(1){
 
@@ -135,23 +131,20 @@ int main(int argc, char *argv[])
         memcpy(filename, &packet_buf[3*size_int+3], BUF_SIZE);
         memcpy(filedata, &packet_buf[3*size_int+BUF_SIZE+4], 1000);
         
+        //printf("total_frag: %s\n", total_frag);
+        //printf("frag_no: %s\n", frag_no);
+        //printf("size: %s\n", size);
+        //printf("filename: %s\n", filename);
+        //printf("filedata %s: %s\n", frag_no, filedata);
         
-        printf("total_frag: %s\n", total_frag);
-        printf("frag_no: %s\n", frag_no);
-        printf("size: %s\n", size);
-        printf("filename: %s\n", filename);
-        printf("filedata %s: %s\n", frag_no, filedata);
-        
-         
         if(atoi(frag_no) == 1){
             file = fopen(filename, "wb");
             printf("File Opened\n");
         }
 
         printf("Writing to file: %s\n", filename);
-        //fprintf(file, "%s", filedata);
         fwrite(filedata, sizeof(char), atoi(size), file);
-        printf("finished writing\n");
+        printf("Finished writing\n");
         
         s = sendto(sockfd, "ACK", strlen("ACK")+1, 0, (struct sockaddr *)&client_addr, client_size);
         if(s == -1) {
@@ -159,17 +152,6 @@ int main(int argc, char *argv[])
             printf("Exiting...\n");
             exit(1);
         }
-        /*
-        for(int j=0; j<strlen(frag_no); j++){
-            printf("frag_no[%d]: %c\n", j, frag_no[j]);
-        }
-        
-        for(int j=0; j<strlen(total_frag); j++){
-            printf("total_frag[%d]: %c\n", j, total_frag[j]);
-        }
-        */
-
-        //bzero(packet_buf, sizeof(struct Packet));
         
         if(strcmp(frag_no, total_frag) == 0) {
             printf("Closing file: %s\n", filename);
@@ -184,7 +166,6 @@ int main(int argc, char *argv[])
         }
     } 
 
-    
     // Close the socket
     close(sockfd);
     return 0;

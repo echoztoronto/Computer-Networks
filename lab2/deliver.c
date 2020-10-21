@@ -173,19 +173,20 @@ int main(int argc, char *argv[])
         pkt_str_pos += 1;
 	    memcpy(packet_string + pkt_str_pos, packets[i].filedata, 1000);
 
+        /*
         printf("Size of total_frag: %lu\n", sizeof(packets[i].total_frag));
         printf("Size of frag_no: %lu\n", sizeof(packets[i].frag_no));
         printf("Size of size: %lu\n", sizeof(packets[i].size));
         printf("Size of filename: %lu\n", sizeof(packets[i].filename));
         printf("Size of filedata: %d\n", packet_size);
         printf("packet_size: %d\n", packet_size);
-	
+        */
+         
         if(i==0){
             printf("packet_string %d:\n", i+1);
 	       /*for(int j=0; j<strlen(packets[i].filedata); j++){
                 printf("filedata[%d]: %c\n", j, packets[i].filedata[j]);
-            }
-        }*/
+            }*/
         }
         
         for(int j=0; j<packet_size; j++){
