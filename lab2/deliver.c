@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <math.h>
+#include <time.h>
 #define MIN(a, b) ((a<b) ? a : b)
 
 // define the packet structure as specified in lab handout
@@ -95,6 +96,11 @@ int main(int argc, char *argv[])
     // Reset the buffer to empty
     bzero(buf, BUF_SIZE);
 
+    clock_t start_t, end_t;
+    double time_elapsed;
+    // start the clock for RTT calculation
+    start_t = clock();
+
     // Once the file is confirmed to exist, senf 'ftp' to the server
     sent_count = sendto(sockfd, "ftp", sizeof("ftp"), 0, (struct sockaddr *)&server_addr, sockaddr_size );    
     if(sent_count == -1){
@@ -111,6 +117,11 @@ int main(int argc, char *argv[])
         printf("Exiting...\n");
 	    exit(1);
     }
+
+    // end the clock for RTT calculation
+    end_t = clock();
+    time_elapsed = ((double) end_t - start_t) / CLOCKS_PER_SEC;
+    printf("Elapsed time between sending message to server and receiving response from server: %f seconds\n", time_elapsed);
     
     if( strcmp(buf, "yes") == 0 ){
 	    printf("A file transfer can start.\n");
