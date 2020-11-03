@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
     socklen_t sockaddr_size, send_attempts;
     fd_set readfds;
     // This is the timeout value for resending packets in seconds
-    double t1 = 1.5;
+    double t1 = 2.5;
     struct timeval timeout;
     float file_size;
     bool ACK_RECEIVED;
@@ -169,14 +169,6 @@ int main(int argc, char *argv[])
     int packet_size = 1100;
     char packet_string[packet_size];
     int pkt_str_pos;
-
-    // clear all entries from the set of sockets to be used in the call to select(). then
-    // add sockfd to this set of sockets
-    FD_ZERO(&readfds);
-    FD_SET(sockfd, &readfds);
-    // setting the proper timeout value for the call to select using t1
-    timeout.tv_sec = t1 - fmod(t1, 1.0);
-    timeout.tv_usec = 1000000*fmod(t1, 1.0);
    
     for(int i=0; i<num_frags; i++){
 
@@ -223,8 +215,14 @@ int main(int argc, char *argv[])
             }
             send_attempts++;
 
-            // use select() to check if there is data waiting to be received on sockfd over the next "timeout" seconds
-            select_count = select(sockfd + 1, &readfds, NULL, NULL, &timeout);
+            // clear all entries from the set of sockets to be used in the call to select() then add sockfd to this set
+	    FD_ZERO(&readfds);
+	    FD_SET(sockfd, &readfds);
+	    // set the proper timeout value for the call to select() using t1
+	    timeout.tv_sec = t1 - fmod(t1, 1.0);
+	    timeout.tv_usec = 1000000*fmod(t1, 1.0);
+	    // use select() to check if there is data waiting to be received on sockfd over the next "timeout" seconds
+	    select_count = select(sockfd + 1, &readfds, NULL, NULL, &timeout);
             if(select_count == -1){
                 perror("Error");
                 printf("Error calling select()");
@@ -234,7 +232,7 @@ int main(int argc, char *argv[])
                 // select() returns 0 when the call times out
                 if(send_attempts < 10){
                     // the maximum number of packet send attempts is arbitrarily set to 10
-                    printf("Did not receive 'ACK' within %f seconds\n Attempting to resend file fragment %u of %u\n", t1, packets[i].frag_no, packets[i].total_frag);
+                    printf("Did not receive 'ACK' within %f seconds\n Attempt %d to resend file fragment %u of %u\n", t1, send_attempts, packets[i].frag_no, packets[i].total_frag);
                 } else{
                     printf("Reached maximum number of send attempts for fragment %u\n Exiting...\n", packets[i].frag_no);
                     exit(1);
@@ -247,7 +245,6 @@ int main(int argc, char *argv[])
                     printf("Exiting...\n");
                     exit(1);
                 }
-                // printf("response_time: %f\n", response_time);
                 // if the message received from the server is ACK, send the next packet
                 // any other message is cause to exit the program and stop the file transfer
                 if( strcmp(buf, "ACK") == 0 ){
