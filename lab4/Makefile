@@ -1,9 +1,10 @@
 TARGET = client
+DEPS = packet.h
 
 all: $(TARGET)
 
 
-client: client.c
+client: client.c ${DEPS}
 	gcc -o client client.c
 
 clean:

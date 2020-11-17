@@ -8,6 +8,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "packet.h"
+
 #define MAXCHAR 100
 #define SOCKET_ERROR -1
 
@@ -62,6 +64,12 @@ int main() {
     
     //use thread for receiving messages
 	//pthread_t rec_thread;
+    
+    
+    //testing 
+    //struct message* m = create_message(10, 50, "Hello", "Hi Hi!");
+    //print_message(m);
+    //print_message(string_to_message(message_to_string(m)));
 
 	while(true) {
 		fgets(input, MAXCHAR, stdin);
