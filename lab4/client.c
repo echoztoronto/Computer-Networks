@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -37,13 +38,13 @@ void list();
 
 //quit
 //terminate the program
-void quit();
+//calls logout then break the program, no need extra implementation
 
 //send a message to current session
 void sendtext(char input[], int socketfd);
 
 //receive messages from server (using a thread)
-//void receivemessage();
+void receivemessage();  //not implemented yet
 
 //display all valid commands
 void help();
@@ -71,7 +72,6 @@ int main() {
                 printf("you are already logged in!\n");
             } else {
                 login(input, &socketfd, &logged);
-                
             }
         } else if (strcmp(command, "/logout") == 0) {
             if(!logged) {
@@ -108,7 +108,8 @@ int main() {
         } else if (strcmp(command, "/list") == 0) {
             list();
         } else if (strcmp(command,"/quit") == 0) {
-            quit();
+            logout(&socketfd, &logged);
+            printf("quitting..\n");
             break;
         } else if (strcmp(command,"/help") == 0) {
             help();
@@ -120,7 +121,7 @@ int main() {
             }                
         }
     }
-
+    
 	return 0;
 }
 
@@ -133,15 +134,23 @@ int main() {
 void login(char input[], int *socketfd, bool *logged) {
     char command[MAXCHAR], clientID[MAXCHAR], password[MAXCHAR], serverIP[MAXCHAR], serverPort[MAXCHAR];
     sscanf(input, "%s %s %s %s %s", &command, &clientID, &password, &serverIP, &serverPort);
-
-    //*socketfd = connect_server(serverIP, serverPort);
     
-    if(*socketfd != SOCKET_ERROR) {
+    *socketfd = connect_server(serverIP, serverPort);
+    
+    if(*socketfd == SOCKET_ERROR) {
         printf("cannot log you in, please try again\n");
     } else {
+        
+        //send LOGIN <client ID, passworkd> to server
+        
+        
+        //receive LO_ACK or LO_NAK <reason> from server
+        
+        //if LO_ACK
         *logged = true;
         printf("logging in..\n");
     }
+    
 }
 
 //connect to server 
@@ -156,21 +165,22 @@ int connect_server(char ip[], char port[]) {
     hints.ai_socktype = SOCK_STREAM;
     
     if ((status = getaddrinfo(ip, port, &hints, &res)) != 0 ) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
+        printf("failed to set socket\n");
         return SOCKET_ERROR;
     }
     
     //create a socket 
     socketfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     if(socketfd < 0) {
-        printf("Failed to create socket\n");
+        printf("failed to create socket\n");
         return SOCKET_ERROR;
     }
     
     //connect to server
     connectfd = connect(socketfd, res->ai_addr, res->ai_addrlen);
     if(connectfd < 0 ) {
-        printf("Failed to connect to server: %s ,port %s\n", ip, port);
+        close(socketfd);
+        printf("failed to connect to server: %s: %s\n", ip, port);
         return SOCKET_ERROR;
     }
     
@@ -181,6 +191,8 @@ int connect_server(char ip[], char port[]) {
 //exit the server
 //send EXIT
 void logout(int *socketfd, bool *logged) {
+    
+    //send EXIT to server
     
     
     printf("logging out..\n");
@@ -195,9 +207,13 @@ void logout(int *socketfd, bool *logged) {
 //receive JN_ACK <session ID> or JN_NAK <session ID, reason>
 void joinsession(char input[], int socketfd, bool *joined) {
     
+    //send JOIN <session ID>
     
+    
+    //receive JN_ACK <session ID> or JN_NAK <session ID, reason>
+    
+    //if JN_ACK
     printf("joining the session..\n");
-    
     *joined = true;
 }
 
@@ -206,9 +222,10 @@ void joinsession(char input[], int socketfd, bool *joined) {
 //send LEAVE_SESS
 void leavesession(int socketfd, bool *joined) {
     
+    //send LEAVE_SESS
+    
     
     printf("leaving the session..\n");
-    
     *joined = false;
 }
 
@@ -218,9 +235,13 @@ void leavesession(int socketfd, bool *joined) {
 //receive NS_ACK <session ID>
 void createsession(char input[], int socketfd, bool *joined) {
     
+    //send NEW_SESS
     
+    
+    //receive NS_ACK <session ID>
+    
+    //if NS_ACK
     printf("creating a session..\n");
-    
     *joined = true;
 }
 
@@ -229,20 +250,23 @@ void createsession(char input[], int socketfd, bool *joined) {
 //send QUERY
 //receive QU_ACK <users and sessions>
 void list() {
-    printf("list..\n");
-}
-
-//quit
-//terminate the program
-void quit() {
-    printf("quitting..\n");
+    
+    //send QUERY
+    //receive QU_ACK <users and sessions>
+    
+    printf("geting the list of connected clients and available sessions..\n");
+    //print the list
+    
 }
 
 
 //send a message to current session
 //send MESSAGE <message data>
 void sendtext(char input[], int socketfd) {
-    printf("sending..\n");
+    
+    //send MESSAGE <message data>
+    
+    printf("sending..\n"); 
 }
 
 
