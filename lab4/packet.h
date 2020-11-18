@@ -36,12 +36,12 @@ void print_message(struct message *m) {
 
 
 //constructor for struct message
-struct message* create_message(unsigned int type, unsigned int size, unsigned char source[], unsigned char data[]) {
+struct message* create_message(unsigned int type, unsigned char source[], unsigned char data[]) {
     
     struct message *m = malloc(sizeof(struct message));
     
     m->type = type;
-    m->size = size;
+    m->size = sizeof data;
     strcpy(m->source, source);
     strcpy(m->data, data);
     
