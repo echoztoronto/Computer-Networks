@@ -43,22 +43,6 @@ struct Node * head = NULL;
 
 int num_users = 4;
 
-/*User usr1;
-usr1.ID = "Yuwen";
-usr1.pwd = "lp473f9";
-
-User usr2;
-usr2.ID = "Ryan";
-usr2.pwd = "qXp62v3";
-
-User usr3;
-usr3.ID = "Jason";
-usr3.pwd = "bt4zAp8";
-
-User usr4;
-usr4.ID = "Mary";
-usr4.pwd = "wR5mx72";*/
-
 User approved_users[] = { {"Yuwen", "lp473f9", NULL}, {"Ryan", "qXp62v3", NULL}, {"Jason", "bt4zAp8", NULL}, {"Mary", "wR5mx72", NULL} };
 
 int main(int argc, char *argv[])
@@ -82,7 +66,7 @@ int main(int argc, char *argv[])
     // Convert the port value from string to int
     port = atoi(argv[1]);
     
-    // Create the UDP socket
+    // Create the socket
     listener = socket(PF_INET, SOCK_STREAM, 0);
     if(listener == -1) {
         perror("Error creating socket");
@@ -131,15 +115,27 @@ int main(int argc, char *argv[])
 
     while(1){
     	readfds = fd_list;
-    	if(select(max_fd+1, &readfds, NULL, NULL, &timeout) == -1){
+
+    	if(select(max_fd+1, &readfds, NULL, NULL, NULL) == -1){
     		perror("Error calling select()");
     		printf("Exiting...\n");
     		exit(1);
     	}
 
-    	for(int i=0; i<max_fd; i++){
+    	printf("Returned from select()\n");
+    	printf("listener: %d\n", listener);
+    	printf("max_fd: %d\n", max_fd);
+
+    	for(int i=0; i<=max_fd; i++){
+    		if(FD_ISSET(i, &readfds)){
+    			printf("socket in readfds: %d\n", i);
+    		}
+    	}
+
+    	for(int i=0; i<=max_fd; i++){
     		if(FD_ISSET(i, &readfds)){
     			if(i == listener){
+    				printf("New message on listener port\n");
     				new_fd = accept(listener, (struct sockaddr *)&client_addr, &client_size);
     				if(new_fd == -1){
     					perror("Error calling accept()");
@@ -152,8 +148,10 @@ int main(int argc, char *argv[])
     					FD_SET(new_fd, &fd_list);
     					// add new client IP and port number to client linked list
     					add_client(new_fd, client_addr);
+    					printf("added client with new_fd: %d\n", new_fd);
     				}
     			} else{
+    				printf("New message from client\n");
     				byte_count = recv(i, packet_buf, PACKET_SIZE, 0);
     				if(byte_count == -1){
     					perror("Error calling recv()");
@@ -188,6 +186,7 @@ int main(int argc, char *argv[])
     							list(i);
     							break;
     						default:
+    							printf("In default case.\n");
     							break;
 
     					}
@@ -203,23 +202,30 @@ int main(int argc, char *argv[])
 
 void add_client(int new_fd, struct sockaddr_in addr_in){
 	struct Node * temp = head;
-	if(temp == NULL){
-		temp = (struct Node*)malloc(sizeof(struct Node));
-		temp->next = NULL;
-		temp->client.sockfd = new_fd;
-		temp->client.IP = addr_in.sin_addr.s_addr;
-		temp->client.port = addr_in.sin_port;
-		return;
+	while(temp != NULL){
+		temp = temp->next;
 	}
-	temp = temp->next;
+	temp = (struct Node*)malloc(sizeof(struct Node));
+	temp->next = NULL;
+	temp->client.sockfd = new_fd;
+	temp->client.IP = addr_in.sin_addr.s_addr;
+	temp->client.port = addr_in.sin_port;
+	printf("In add_client\n temp->client.sockfd: %d\n", temp->client.sockfd);
+	return;
 }
 
 struct Node * find_client(int sockfd, char * client_ID){
+	printf("In find_client\n");
 	struct Node * temp = head;
+	if(head == NULL){
+		printf("head is NULL\n");
+	}
 	while(temp != NULL){
 		if(client_ID != NULL && temp->client.usr.ID == client_ID){
+			printf("temp client_ID: %s\n", temp->client.usr.ID);
 			return temp;
 		} else if(sockfd != 0 && temp->client.sockfd == sockfd){
+			printf("temp sockfd: %d\n", temp->client.sockfd);
 			return temp;
 		} else{
 			temp = temp->next;
@@ -245,6 +251,7 @@ int remove_client(char * client_ID){
 }
 
 int verify_login(char * client_ID, char * password){
+	printf("In verify_login. client_ID: %s, password: %s", client_ID, password);
 	for(int i=0; i<num_users; i++){
 		if(strcmp(client_ID, approved_users[i].ID) == 0 && strcmp(password, approved_users[i].pwd) == 0){
 			return 1;
@@ -271,6 +278,7 @@ void login(int sockfd, unsigned char source[], unsigned char data[]){
 	char delim = ',';
 	char * client_ID = strtok(data, &delim);
 	char * password = strtok(NULL, &delim);
+	printf("In login. sockfd: %d\n", sockfd);
 	struct Node * temp = find_client(sockfd, NULL);
 	if(temp == NULL){
 		printf("Not finding established connection\n");
@@ -283,7 +291,7 @@ void login(int sockfd, unsigned char source[], unsigned char data[]){
 			printf("Exiting...\n");
 			exit(1);
 		}
-	} else if(verify_login(client_ID, password)){
+	} else if(verify_login(client_ID, password) == 1){
 		strcpy(temp->client.usr.ID, client_ID);
 		strcpy(temp->client.usr.pwd, password);
 		struct message * m = create_message(LO_ACK, "", "");
@@ -294,6 +302,7 @@ void login(int sockfd, unsigned char source[], unsigned char data[]){
 			exit(1);
 		}
 	} else{
+		printf("In else clause\n");
 		struct message * m = create_message(LO_NAK, "", "Invalid username or password\n");
 		strcpy(packet_string, message_to_string(m));
 		if(send(sockfd, packet_string, sizeof(packet_string), 0) == -1){
@@ -437,7 +446,7 @@ void message(unsigned char source[], unsigned char data[]){
 	}
 }
 
-void list(sockfd){
+void list(int sockfd){
 	//send QU_ACK
 	//iterate through client linked list and send all user IDs and session IDs, being sure to check for duplicates
 	struct message * m;
