@@ -16,34 +16,34 @@
 
 //login <client ID> <password> <server-IP> <server-port>
 //log into the server at the given address and port
-void login(char input[], int *socketfd, bool *logged);
+void login(char input[], int *socketfd, bool *logged, char username[]);
 
 //logout
 //exit the server
-void logout(int *socketfd, bool *logged);
+void logout(int *socketfd, bool *logged, char username[]);
 
 //joinsession <session ID> 
 //join the session with given session id
-void joinsession(char input[], int socketfd, bool *joined);
+void joinsession(char input[], int socketfd, bool *joined, char username[]);
 
 //leavesession
 //leave current session
-void leavesession(int socketfd, bool *joined);
+void leavesession(int socketfd, bool *joined, char username[]);
 
 //createsession <session ID>
 //create a new session and join it
-void createsession(char input[], int socketfd, bool *joined);
+void createsession(char input[], int socketfd, bool *joined, char username[]);
 
 //list
 //get the list of connected clients and available sessions
-void list();
+void list(char username[]);
 
 //quit
 //terminate the program
 //calls logout then break the program, no need extra implementation
 
 //send a message to current session
-void sendtext(char input[], int socketfd);
+void sendtext(char input[], int socketfd, char username[]);
 
 //receive messages from server (using a thread)
 void receivemessage();  //not implemented yet
@@ -57,7 +57,7 @@ int connect_server(char ip[], char port[]);
 
 
 int main() {
-	char input[MAX_CHAR], command[MAX_CHAR];
+	char input[MAX_CHAR], command[MAX_CHAR], username[MAX_CHAR];
 	int socketfd;
     bool logged = false;
     bool joined = false;
@@ -81,7 +81,7 @@ int main() {
             if(logged) {
                 printf("you are already logged in!\n");
             } else {
-                login(input, &socketfd, &logged);
+                login(input, &socketfd, &logged, username);
             }
             
         } else if (strcmp(command, "/logout") == 0) {
@@ -89,7 +89,7 @@ int main() {
             if(!logged) {
                 printf("you are not logged in!\n");
             } else {
-                logout(&socketfd, &logged);
+                logout(&socketfd, &logged, username);
             }
             
         } else if (strcmp(command, "/joinsession") == 0) {
@@ -100,13 +100,13 @@ int main() {
             else if(joined) {
                 printf("you can only join one session!\n");
             } else {
-                joinsession(input, socketfd, &joined);
+                joinsession(input, socketfd, &joined, username);
             }
             
         } else if (strcmp(command, "/leavesession") == 0) {
             
             if(joined) {
-                leavesession(socketfd, &joined);
+                leavesession(socketfd, &joined, username);
             } else {
                 printf("you are not in any session yet!\n");
             }
@@ -118,16 +118,16 @@ int main() {
             else if(joined) {
                 printf("you are already in a session!\n");
             } else {
-                createsession(input, socketfd, &joined);
+                createsession(input, socketfd, &joined, username);
             }
             
         } else if (strcmp(command, "/list") == 0) {
             
-            list();
+            list(username);
             
         } else if (strcmp(command,"/quit") == 0) {
             
-            logout(&socketfd, &logged);
+            logout(&socketfd, &logged, username);
             printf("quitting..\n");
             
             break;
@@ -141,7 +141,7 @@ int main() {
             if(!logged || !joined) {
                 printf("Invalid command. Use /help to see all valid commands.\n");
             } else {
-                sendtext(input, socketfd);
+                sendtext(input, socketfd, username);
             }
                 
         }
@@ -156,15 +156,17 @@ int main() {
 //log into the server at the given address and port
 //send LOGIN <client ID, password>
 //receive LO_ACK or LO_NAK <reason> 
-void login(char input[], int *socketfd, bool *logged) {
+void login(char input[], int *socketfd, bool *logged, char username[]) {
     char command[MAX_CHAR], clientID[MAX_CHAR], password[MAX_CHAR], serverIP[MAX_CHAR], serverPort[MAX_CHAR];
     sscanf(input, "%s %s %s %s %s", &command, &clientID, &password, &serverIP, &serverPort);
     
+    strcpy(username, clientID);
     *socketfd = connect_server(serverIP, serverPort);
+    
     
     if(*socketfd == ERROR) {
         printf("cannot log you in, please try again\n");
-    } else if(false) {
+    } else {
         
         //create message then convert it to string 
         char message_data[MAX_CHAR], packet_string[MAX_CHAR];
@@ -198,6 +200,7 @@ void login(char input[], int *socketfd, bool *logged) {
         //LO_ACK or LO_NAK <reason>
         if(r->type == LO_ACK) {
             *logged = true;
+            strcpy(username, clientID);
             printf("you are now logged in..\n");
         }
         else if (r->type == LO_NAK) {
@@ -243,7 +246,7 @@ int connect_server(char ip[], char port[]) {
 //logout
 //exit the server
 //send EXIT
-void logout(int *socketfd, bool *logged) {
+void logout(int *socketfd, bool *logged, char username[]) {
     
     //send EXIT to server
     
@@ -258,7 +261,7 @@ void logout(int *socketfd, bool *logged) {
 //join the session with given session id
 //send JOIN <session ID>
 //receive JN_ACK <session ID> or JN_NAK <session ID, reason>
-void joinsession(char input[], int socketfd, bool *joined) {
+void joinsession(char input[], int socketfd, bool *joined, char username[]) {
     
     //send JOIN <session ID>
     
@@ -273,7 +276,7 @@ void joinsession(char input[], int socketfd, bool *joined) {
 //leavesession
 //leave current session
 //send LEAVE_SESS
-void leavesession(int socketfd, bool *joined) {
+void leavesession(int socketfd, bool *joined, char username[]) {
     
     //send LEAVE_SESS
     
@@ -286,7 +289,7 @@ void leavesession(int socketfd, bool *joined) {
 //create a new session and join it
 //send NEW_SESS
 //receive NS_ACK <session ID>
-void createsession(char input[], int socketfd, bool *joined) {
+void createsession(char input[], int socketfd, bool *joined, char username[]) {
     
     //send NEW_SESS
     
@@ -302,7 +305,7 @@ void createsession(char input[], int socketfd, bool *joined) {
 //get the list of connected clients and available sessions
 //send QUERY
 //receive QU_ACK <users and sessions>
-void list() {
+void list(char username[]) {
     
     //send QUERY
     //receive QU_ACK <users and sessions>
@@ -315,7 +318,7 @@ void list() {
 
 //send a message to current session
 //send MESSAGE <message data>
-void sendtext(char input[], int socketfd) {
+void sendtext(char input[], int socketfd, char username[]) {
     
     //send MESSAGE <message data>
     
