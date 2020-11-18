@@ -1,12 +1,13 @@
-TARGET = server deliver
+TARGET = server client
+DEPS = packet.h
 
 all: $(TARGET)
 
-server: server.c
+server: server.c ${DEPS}
 	gcc -o server server.c
 
-deliver: deliver.c
-	gcc -lm -o deliver deliver.c
+client: client.c ${DEPS}
+	gcc -o client client.c
 
 clean:
 	-rm -f $(TARGET)
