@@ -166,9 +166,7 @@ void login(char input[], int *socketfd, bool *logged, char username[]) {
     if(*socketfd == ERROR) {
         printf("cannot log you in, please try again\n");
     } else {
-
-        printf("socket: %d\n", *socketfd);
-        
+ 
         //create message then convert it to string 
         char message_data[MAX_CHAR], packet_string[MAX_CHAR];
         
@@ -200,8 +198,6 @@ void login(char input[], int *socketfd, bool *logged, char username[]) {
            *socketfd = ERROR;
            return; 
         } 
-        
-        printf("recv message: %s\n", recv_message);
         
         struct message *r = string_to_message(recv_message);
         
@@ -429,7 +425,7 @@ void sendtext(char input[], int socketfd, char username[]) {
         return;
     } 
     
-    printf("(sent)\n"); 
+    printf("(sent)\n\n"); 
 }
 
 
