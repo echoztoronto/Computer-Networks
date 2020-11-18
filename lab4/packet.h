@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
  
+#define ERROR -1
+
 //packet types
 #define LOGIN 1
 #define LO_ACK 2
