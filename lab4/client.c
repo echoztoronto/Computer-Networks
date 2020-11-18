@@ -38,15 +38,11 @@ void createsession(char input[], int socketfd, bool *joined, char username[]);
 //get the list of connected clients and available sessions
 void list(int socketfd, char username[]);
 
-//quit
-//terminate the program
-//calls logout then break the program, no need extra implementation
-
 //send a message to current session
 void sendtext(char input[], int socketfd, char username[]);
 
 //receive messages from server (using a thread)
-void receivemessage();  //not implemented yet
+void *receivemessage(void* socketfd);  
 
 //display all valid commands
 void help();
@@ -61,14 +57,26 @@ int main() {
 	int socketfd;
     bool logged = false;
     bool joined = false;
-    
-    //use thread for receiving messages
-	//pthread_t rec_thread;
+    bool thread_on = false;
+    pthread_t recv_thread;
 
 	while(true) {
         
 		fgets(input, MAX_CHAR, stdin);
         sscanf(input, "%s", &command);
+        
+        //turn on thread to receive messages while in session
+        if(joined && !thread_on) {
+            int* socketfd_p = &socketfd;
+            pthread_create(&recv_thread, NULL, receivemessage, socketfd_p);
+            thread_on = true;
+        }
+        
+        //not in session but thread is on, should turn it off
+        if(!joined && thread_on) {
+            pthread_cancel(recv_thread);
+            thread_on = false;
+        }
 
         if (strcmp(command, "/login") == 0) {
             
@@ -429,4 +437,26 @@ void help() {
     printf("/list\n");
     printf("/quit\n");
     printf("/help\n");
+}
+
+
+//receive messages while in session
+void *receivemessage(void* socketfd) {
+    
+    char buf[MAX_CHAR];
+    int* socketfd_p = (int*)socketfd;
+    
+    while(true) {
+        
+        //receive from server
+        if(recv(*socketfd_p, (char*)buf, sizeof buf, 0) != ERROR) {
+            struct message *r = string_to_message(buf);
+            
+            if(r->type == MESSAGE) {
+                printf("%s: %s\n", r->source, r->data);
+            }
+            free(r);
+        }
+        memset(buf, 0, sizeof buf);
+    }
 }
