@@ -67,11 +67,11 @@ int main() {
     
     
     //testing 
-    //struct message* m = create_message(10, 50, "Hello", "Hi Hi!");
+    //struct message* m = create_message(10, "Hello", "Hi Hi!");
     //print_message(m);
     //print_message(string_to_message(message_to_string(m)));
 
-	while(true) {
+	while(false) {
 		fgets(input, MAXCHAR, stdin);
         sscanf(input, "%s", &command);
 
@@ -149,7 +149,7 @@ void login(char input[], int *socketfd, bool *logged) {
         printf("cannot log you in, please try again\n");
     } else {
         
-        //send LOGIN <client ID, passworkd> to server
+        //send LOGIN <client ID, password> to server
         
         
         //receive LO_ACK or LO_NAK <reason> from server

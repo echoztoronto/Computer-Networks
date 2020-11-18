@@ -41,7 +41,7 @@ struct message* create_message(unsigned int type, unsigned char source[], unsign
     struct message *m = malloc(sizeof(struct message));
     
     m->type = type;
-    m->size = sizeof data;
+    m->size = MAX_DATA;
     strcpy(m->source, source);
     strcpy(m->data, data);
     
@@ -64,7 +64,25 @@ struct message* string_to_message(char buf[]) {
     
     struct message *m = malloc(sizeof(struct message));
     
-    //TO DO
+    char temp[MAX_NAME];
+    sscanf(buf, "%d:%d:%s:%s", &m->type, &m->size, temp);
+    //temp will contain source and : and the 1st word of data
+    strcpy(m->source, strtok(temp, ":"));
+    
+    //get data (after the 3rd ':')
+    unsigned int data_index = 0, j = 0;
+    
+    for(int i = 0; i < strlen(buf); i++) {
+        if(buf[i] == ':') {
+            j++;
+            if(j == 3) {
+                data_index = i+1;
+                break;
+            }
+        }
+    }
+
+    strcpy(m->data, &buf[data_index]);
     
     return m; 
 }
