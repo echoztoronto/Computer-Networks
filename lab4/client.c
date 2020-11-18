@@ -59,21 +59,8 @@ int main() {
 
     while(true) {
         
-	fgets(input, MAX_CHAR, stdin);
+        fgets(input, MAX_CHAR, stdin);
         sscanf(input, "%s", &command);
-        
-        //turn on thread to receive messages while in session
-        if(joined && !thread_on) {
-            int* socketfd_p = &socketfd;
-            pthread_create(&recv_thread, NULL, receivemessage, socketfd_p);
-            thread_on = true;
-        }
-        
-        //not in session but thread is on, should turn it off
-        if(!joined && thread_on) {
-            pthread_cancel(recv_thread);
-            thread_on = false;
-        }
 
         if (strcmp(command, "/login") == 0) {
             
@@ -142,8 +129,22 @@ int main() {
             } else {
                 sendtext(input, socketfd, username);
             }
-                
         }
+        
+        //turn on thread to receive messages while in session
+        if(joined && !thread_on) {
+            int* socketfd_p = &socketfd;
+            pthread_create(&recv_thread, NULL, receivemessage, socketfd_p);
+            thread_on = true;
+        }
+        
+        //not in session but thread is on, should turn it off
+        if(!joined && thread_on) {
+            pthread_cancel(recv_thread);
+            thread_on = false;
+        }
+        
+        
     }
     
 	return 0;
@@ -159,10 +160,13 @@ void login(char input[], int *socketfd, bool *logged, char username[]) {
     char command[MAX_CHAR], clientID[MAX_CHAR], password[MAX_CHAR], serverIP[MAX_CHAR], serverPort[MAX_CHAR];
     sscanf(input, "%s %s %s %s %s", &command, &clientID, &password, &serverIP, &serverPort);
     
+    printf("DEBUG, socketfd before connecting to server: %d\n", *socketfd);
+    
     strcpy(username, clientID);
     *socketfd = connect_server(serverIP, serverPort);
-    
-    
+
+    printf("DEBUG, socketfd after connecting to server: %d\n", *socketfd);
+
     if(*socketfd == ERROR) {
         printf("cannot log you in, please try again\n");
     } else {
@@ -179,22 +183,34 @@ void login(char input[], int *socketfd, bool *logged, char username[]) {
         strcpy(packet_string, message_to_string(m));
         
         //send packet_string to server
-        if(send(*socketfd, packet_string, sizeof(packet_string), 0) == ERROR) {
+        unsigned int send_status = ERROR;
+        printf("DEBUG send_status before sending message: %d\n", send_status);
+        
+        send_status = send(*socketfd, packet_string, sizeof(packet_string), 0);
+        if( send_status == ERROR) {
             printf("failed to send '%s' to server\n", packet_string);
             close(*socketfd);
             *socketfd = ERROR;
             return;
         } 
         
+        printf("DEBUG send_status after sending message: %d\n", send_status);
+        
         //receive from server
         char recv_message[MAX_CHAR];
+        unsigned int recv_status = ERROR;
+        printf("DEBUG recv_status before receiving message: %d\n", recv_status);
+        recv_status = recv(*socketfd, (char*)recv_message, sizeof(recv_message), 0);
+        printf("DEBUG recv_status after receiving message: %d\n", recv_status);
         
-        if(recv(*socketfd, (char*)recv_message, sizeof(recv_message), 0) == ERROR) {
+        if(recv_status == ERROR) {
            printf("failed to receive ACK from server\n");
            close(*socketfd);
            *socketfd = ERROR;
            return; 
         } 
+        
+        printf("I'm here 4 %s\n", recv_message);
         
         struct message *r = string_to_message(recv_message);
         
@@ -427,6 +443,7 @@ void sendtext(char input[], int socketfd, char username[]) {
 
 
 void help() {
+    printf("**********************************************************\n");
     printf("All valid commands:\n");
     printf("/login <client ID> <password> <server-IP> <server-port>\n");
     printf("/logout\n");
@@ -436,6 +453,7 @@ void help() {
     printf("/list\n");
     printf("/quit\n");
     printf("/help\n");
+    printf("**********************************************************\n");
 }
 
 

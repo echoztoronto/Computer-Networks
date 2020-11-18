@@ -6,6 +6,7 @@
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <math.h>
 #include "packet.h"
 
 void login(int sockfd, unsigned char source[], unsigned char data[]);
@@ -283,7 +284,7 @@ void login(int sockfd, unsigned char source[], unsigned char data[]){
 	if(temp == NULL){
 		printf("Not finding established connection\n");
 	}
-	if(find_client(NULL, client_ID) != NULL){
+	if(find_client(0, client_ID) != NULL){
 		struct message * m = create_message(LO_NAK, "", "Specified user is already logged in\n");
 		strcpy(packet_string, message_to_string(m));
 		if(send(sockfd, packet_string, sizeof(packet_string), 0) == -1){

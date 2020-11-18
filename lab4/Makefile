@@ -4,10 +4,10 @@ DEPS = packet.h
 all: $(TARGET)
 
 server: server.c ${DEPS}
-	gcc -w -o server server.c
+	gcc -w -lm -o server server.c
 
 client: client.c ${DEPS}
-	gcc -w -o client client.c
+	gcc -w -pthread -o client client.c
 
 clean:
 	-rm -f $(TARGET)
