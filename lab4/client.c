@@ -143,8 +143,6 @@ int main() {
             pthread_cancel(recv_thread);
             thread_on = false;
         }
-        
-        
     }
     
 	return 0;
@@ -304,7 +302,7 @@ void joinsession(char input[], int socketfd, bool *joined, char username[]) {
     //JN_ACK <session ID> or JN_NAK <session ID, reason>
     if(r->type == JN_ACK) {
         *joined = true;
-        printf("you are now joined in session %s..\n", r->data);
+        printf("\nyou are now joined in session %s\n", r->data);
     }
     else if (r->type == JN_NAK) {
         printf("failed to join in session %s\n", r->data);
@@ -366,7 +364,7 @@ void createsession(char input[], int socketfd, bool *joined, char username[]) {
     //NS_ACK <session ID> or NS_NAK
     if(r->type == NS_ACK) {
         *joined = true;
-        printf("new session created: %s..\n", r->data);
+        printf("\nnew session created: %s\n", r->data);
     }
     else if (r->type == NS_NAK) {
         printf("failed to create session %s\n", sessionID);
