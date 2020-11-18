@@ -143,8 +143,6 @@ int main() {
             pthread_cancel(recv_thread);
             thread_on = false;
         }
-        
-        
     }
     
 	return 0;
@@ -166,9 +164,7 @@ void login(char input[], int *socketfd, bool *logged, char username[]) {
     if(*socketfd == ERROR) {
         printf("cannot log you in, please try again\n");
     } else {
-
-        printf("socket: %d\n", *socketfd);
-        
+ 
         //create message then convert it to string 
         char message_data[MAX_CHAR], packet_string[MAX_CHAR];
         
@@ -200,8 +196,6 @@ void login(char input[], int *socketfd, bool *logged, char username[]) {
            *socketfd = ERROR;
            return; 
         } 
-        
-        printf("recv message: %s\n", recv_message);
         
         struct message *r = string_to_message(recv_message);
         
@@ -308,7 +302,7 @@ void joinsession(char input[], int socketfd, bool *joined, char username[]) {
     //JN_ACK <session ID> or JN_NAK <session ID, reason>
     if(r->type == JN_ACK) {
         *joined = true;
-        printf("you are now joined in session %s..\n", r->data);
+        printf("\nyou are now joined in session %s\n", r->data);
     }
     else if (r->type == JN_NAK) {
         printf("failed to join in session %s\n", r->data);
@@ -370,7 +364,7 @@ void createsession(char input[], int socketfd, bool *joined, char username[]) {
     //NS_ACK <session ID> or NS_NAK
     if(r->type == NS_ACK) {
         *joined = true;
-        printf("new session created: %s..\n", r->data);
+        printf("\nnew session created: %s\n", r->data);
     }
     else if (r->type == NS_NAK) {
         printf("failed to create session %s\n", sessionID);
@@ -429,7 +423,7 @@ void sendtext(char input[], int socketfd, char username[]) {
         return;
     } 
     
-    printf("(sent)\n"); 
+    printf("(sent)\n\n"); 
 }
 
 
