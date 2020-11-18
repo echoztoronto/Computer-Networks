@@ -10,8 +10,8 @@
 
 #include "packet.h"
 
-#define MAXCHAR 100
-#define SOCKET_ERROR -1
+
+#define ERROR -1
 
 
 //login <client ID> <password> <server-IP> <server-port>
@@ -57,7 +57,7 @@ int connect_server(char ip[], char port[]);
 
 
 int main() {
-	char input[MAXCHAR], command[MAXCHAR];
+	char input[MAX_CHAR], command[MAX_CHAR];
 	int socketfd;
     bool logged = false;
     bool joined = false;
@@ -71,23 +71,29 @@ int main() {
     //print_message(m);
     //print_message(string_to_message(message_to_string(m)));
 
-	while(false) {
-		fgets(input, MAXCHAR, stdin);
+	while(true) {
+        
+		fgets(input, MAX_CHAR, stdin);
         sscanf(input, "%s", &command);
 
         if (strcmp(command, "/login") == 0) {
+            
             if(logged) {
                 printf("you are already logged in!\n");
             } else {
                 login(input, &socketfd, &logged);
             }
+            
         } else if (strcmp(command, "/logout") == 0) {
+            
             if(!logged) {
                 printf("you are not logged in!\n");
             } else {
                 logout(&socketfd, &logged);
             }
+            
         } else if (strcmp(command, "/joinsession") == 0) {
+            
             if(!logged) {
                 printf("you are not logged in!\n");
             }
@@ -98,6 +104,7 @@ int main() {
             }
             
         } else if (strcmp(command, "/leavesession") == 0) {
+            
             if(joined) {
                 leavesession(socketfd, &joined);
             } else {
@@ -113,20 +120,30 @@ int main() {
             } else {
                 createsession(input, socketfd, &joined);
             }
+            
         } else if (strcmp(command, "/list") == 0) {
+            
             list();
+            
         } else if (strcmp(command,"/quit") == 0) {
+            
             logout(&socketfd, &logged);
             printf("quitting..\n");
+            
             break;
+            
         } else if (strcmp(command,"/help") == 0) {
+            
             help();
+            
         } else {
+            
             if(!logged || !joined) {
                 printf("Invalid command. Use /help to see all valid commands.\n");
             } else {
                 sendtext(input, socketfd);
-            }                
+            }
+                
         }
     }
     
@@ -140,25 +157,53 @@ int main() {
 //send LOGIN <client ID, password>
 //receive LO_ACK or LO_NAK <reason> 
 void login(char input[], int *socketfd, bool *logged) {
-    char command[MAXCHAR], clientID[MAXCHAR], password[MAXCHAR], serverIP[MAXCHAR], serverPort[MAXCHAR];
+    char command[MAX_CHAR], clientID[MAX_CHAR], password[MAX_CHAR], serverIP[MAX_CHAR], serverPort[MAX_CHAR];
     sscanf(input, "%s %s %s %s %s", &command, &clientID, &password, &serverIP, &serverPort);
     
     *socketfd = connect_server(serverIP, serverPort);
     
-    if(*socketfd == SOCKET_ERROR) {
+    if(*socketfd == ERROR) {
         printf("cannot log you in, please try again\n");
-    } else {
+    } else if(false) {
         
-        //send LOGIN <client ID, password> to server
+        //create message then convert it to string 
+        char message_data[MAX_CHAR], packet_string[MAX_CHAR];
         
+        strcpy(message_data, clientID);
+        strcat(message_data, ",");
+        strcat(message_data, password);
+        struct message *m = create_message(LOGIN, clientID, message_data);
+        strcpy(packet_string, message_to_string(m));
         
-        //receive LO_ACK or LO_NAK <reason> from server
+        //send packet_string to server
+        if(send(*socketfd, packet_string, sizeof(packet_string), 0) == ERROR) {
+            printf("failed to send '%s' to server\n", packet_string);
+            close(*socketfd);
+            *socketfd = ERROR;
+            return;
+        } 
         
-        //if LO_ACK
-        *logged = true;
-        printf("logging in..\n");
+        //receive from server
+        char recv_message[MAX_CHAR];
+        
+        if(recv(*socketfd, (char*)recv_message, sizeof(recv_message), 0) == ERROR) {
+           printf("failed to receive ACK from server\n");
+           close(*socketfd);
+           *socketfd = ERROR;
+           return; 
+        } 
+        
+        struct message *r = string_to_message(recv_message);
+        
+        //LO_ACK or LO_NAK <reason>
+        if(r->type == LO_ACK) {
+            *logged = true;
+            printf("you are now logged in..\n");
+        }
+        else if (r->type == LO_NAK) {
+            printf("failed to logged in, reason: %s\n", r->data);
+        }
     }
-    
 }
 
 //connect to server 
@@ -174,14 +219,14 @@ int connect_server(char ip[], char port[]) {
     
     if ((status = getaddrinfo(ip, port, &hints, &res)) != 0 ) {
         printf("failed to set socket\n");
-        return SOCKET_ERROR;
+        return ERROR;
     }
     
     //create a socket 
     socketfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     if(socketfd < 0) {
         printf("failed to create socket\n");
-        return SOCKET_ERROR;
+        return ERROR;
     }
     
     //connect to server
@@ -189,7 +234,7 @@ int connect_server(char ip[], char port[]) {
     if(connectfd < 0 ) {
         close(socketfd);
         printf("failed to connect to server: %s: %s\n", ip, port);
-        return SOCKET_ERROR;
+        return ERROR;
     }
     
     return socketfd;

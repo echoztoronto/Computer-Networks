@@ -17,8 +17,9 @@
 #define QUERY 12
 #define QU_ACK 13
 
-#define MAX_NAME 100
-#define MAX_DATA 1000
+#define MAX_NAME 50
+#define MAX_CHAR 100
+#define MAX_DATA 100
 
 
 struct message {
@@ -52,7 +53,7 @@ struct message* create_message(unsigned int type, unsigned char source[], unsign
 //convert message struct to string (type:size:source:data)
 char* message_to_string(struct message* m) {
     
-    char *buf = malloc(sizeof(char)*MAX_DATA);
+    char *buf = malloc(MAX_CHAR);
     sprintf(buf, "%d:%d:%s:%s", m->type, m->size, &m->source, &m->data);
     
     return buf;
