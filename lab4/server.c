@@ -221,13 +221,13 @@ void add_client(int new_fd, struct sockaddr_in addr_in){
 }
 
 struct Node * find_client(int sockfd, char * client_ID){
-	printf("In find_client\n");
+	printf("In find_client\n sockfd: %d, client_ID: %s\n", sockfd, client_ID);
 	struct Node * temp = head;
 	if(head == NULL){
 		printf("head is NULL\n");
 	}
 	while(temp != NULL){
-		if(client_ID != NULL && temp->client.usr.ID == client_ID){
+		if(client_ID != NULL && strcmp(temp->client.usr.ID, client_ID) == 0){
 			printf("temp client_ID: %s\n", temp->client.usr.ID);
 			return temp;
 		} else if(sockfd != 0 && temp->client.sockfd == sockfd){
@@ -257,7 +257,7 @@ int remove_client(char * client_ID){
 }
 
 int verify_login(char * client_ID, char * password){
-	printf("In verify_login. client_ID: %s, password: %s", client_ID, password);
+	printf("In verify_login. client_ID: %s, password: %s\n", client_ID, password);
 	for(int i=0; i<num_users; i++){
 		if(strcmp(client_ID, approved_users[i].ID) == 0 && strcmp(password, approved_users[i].pwd) == 0){
 			return 1;
@@ -298,7 +298,7 @@ void login(int sockfd, unsigned char source[], unsigned char data[]){
 			exit(1);
 		}
 	} else if(verify_login(client_ID, password) == 1){
-		printf("Send successful login message.");
+		printf("Send successful login message\n");
 		strcpy(temp->client.usr.ID, client_ID);
 		strcpy(temp->client.usr.pwd, password);
 		struct message * m = create_message(LO_ACK, "", "");
@@ -456,6 +456,7 @@ void message(unsigned char source[], unsigned char data[]){
 void list(int sockfd){
 	//send QU_ACK
 	//iterate through client linked list and send all user IDs and session IDs, being sure to check for duplicates
+	printf("In list\n");
 	struct message * m;
 	char packet_string[10*MAX_CHAR];
 
