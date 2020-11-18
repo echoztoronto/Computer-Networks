@@ -271,6 +271,7 @@ int recalculate_max_fd(){
 		}
 		temp = temp->next;
 	}
+	return max;
 }
 
 int verify_login(char * client_ID, char * password){
