@@ -202,16 +202,21 @@ int main(int argc, char *argv[])
 }
 
 void add_client(int new_fd, struct sockaddr_in addr_in){
+	struct Node * new = (struct Node*)malloc(sizeof(struct Node));
+	new->next = NULL;
+	new->client.sockfd = new_fd;
+	new->client.IP = addr_in.sin_addr.s_addr;
+	new->client.port = addr_in.sin_port;
+	if(head == NULL){
+		head = new;
+		return;
+	}
 	struct Node * temp = head;
-	while(temp != NULL){
+	while(temp->next != NULL){
 		temp = temp->next;
 	}
-	temp = (struct Node*)malloc(sizeof(struct Node));
-	temp->next = NULL;
-	temp->client.sockfd = new_fd;
-	temp->client.IP = addr_in.sin_addr.s_addr;
-	temp->client.port = addr_in.sin_port;
-	printf("In add_client\n temp->client.sockfd: %d\n", temp->client.sockfd);
+	temp->next = new;
+	printf("In add_client\n new->client.sockfd: %d\n", new->client.sockfd);
 	return;
 }
 
@@ -293,6 +298,7 @@ void login(int sockfd, unsigned char source[], unsigned char data[]){
 			exit(1);
 		}
 	} else if(verify_login(client_ID, password) == 1){
+		printf("Send successful login message.");
 		strcpy(temp->client.usr.ID, client_ID);
 		strcpy(temp->client.usr.pwd, password);
 		struct message * m = create_message(LO_ACK, "", "");
