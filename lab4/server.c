@@ -6,7 +6,7 @@
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <packet.h>
+#include "packet.h"
 
 void login(int sockfd, unsigned char source[], unsigned char data[]);
 void logout(unsigned char source[]);
@@ -16,18 +16,18 @@ void new_sess(int sockfd, unsigned char source[], unsigned char data[]);
 void message(unsigned char source[], unsigned char data[]);
 void list(int sockfd);
 
-void add_client(struct sockaddr * addr);
+void add_client(int new_fd, struct sockaddr_in addr_in);
 struct Node * find_client(int sockfd, char * client_ID);
 int verify_login(char * client_ID, char * password);
 int verify_session(char * session_ID);
 
-typedef struct{
+typedef struct User{
 	char ID[MAX_NAME];
 	char pwd[MAX_CHAR];
 	char session_ID[MAX_CHAR];
 } User;
 
-typedef struct{
+typedef struct Client_Info{
 	int sockfd;
 	uint32_t IP;
 	unsigned short int port;
@@ -43,23 +43,23 @@ struct Node * head = NULL;
 
 int num_users = 4;
 
-User usr1;
+/*User usr1;
 usr1.ID = "Yuwen";
-usr1.pwd = "lp473f9"
+usr1.pwd = "lp473f9";
 
 User usr2;
 usr2.ID = "Ryan";
-usr2.pwd = "qXp62v3"
+usr2.pwd = "qXp62v3";
 
 User usr3;
 usr3.ID = "Jason";
-usr3.pwd = "bt4zAp8"
+usr3.pwd = "bt4zAp8";
 
 User usr4;
 usr4.ID = "Mary";
-usr4.pwd = "wR5mx72"
+usr4.pwd = "wR5mx72";*/
 
-User approved_users[] = {usr1 usr2 usr3 usr4};
+User approved_users[] = { {"Yuwen", "lp473f9", NULL}, {"Ryan", "qXp62v3", NULL}, {"Jason", "bt4zAp8", NULL}, {"Mary", "wR5mx72", NULL} };
 
 int main(int argc, char *argv[])
 {
@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
 
     // add the listener socket to the set
     // listener is currently the maximum (and only) file descriptor, so set max_fd accordingly
-    FD_ZERO(fd_list);
+    FD_ZERO(&fd_list);
     FD_ZERO(&readfds);
 	FD_SET(listener, &fd_list);
 	max_fd = listener;
@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
 
     // packet_buf will be used to point to the packets received from the client during the file transfer
     char packet_buf[PACKET_SIZE];
-    bzero(packet_buf, PACKET_SIZE)
+    bzero(packet_buf, PACKET_SIZE);
     
     struct sockaddr_in client_addr;
     client_size = sizeof client_addr;
@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 
     while(1){
     	readfds = fd_list;
-    	if(select(max_fd+1, &readfds, NULL, NULL, timeout) == -1){
+    	if(select(max_fd+1, &readfds, NULL, NULL, &timeout) == -1){
     		perror("Error calling select()");
     		printf("Exiting...\n");
     		exit(1);
@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
     					}
     					FD_SET(new_fd, &fd_list);
     					// add new client IP and port number to client linked list
-    					add_client(new_fd, client_addr, head);
+    					add_client(new_fd, client_addr);
     				}
     			} else{
     				byte_count = recv(i, packet_buf, PACKET_SIZE, 0);
@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
     					close(i);
     					FD_CLR(i, &fd_list);
     				} else{ //this means there is data sent from a client which must be processed
-    					temp_message = string_to_message(packet_buf);
+    					struct message * temp_message = string_to_message(packet_buf);
     					switch(temp_message->type)
     					{
     						case LOGIN:
@@ -206,7 +206,7 @@ void add_client(int new_fd, struct sockaddr_in addr_in){
 	if(temp == NULL){
 		temp = (struct Node*)malloc(sizeof(struct Node));
 		temp->next = NULL;
-		temp->sockfd = new_fd;
+		temp->client.sockfd = new_fd;
 		temp->client.IP = addr_in.sin_addr.s_addr;
 		temp->client.port = addr_in.sin_port;
 		return;
@@ -219,7 +219,7 @@ struct Node * find_client(int sockfd, char * client_ID){
 	while(temp != NULL){
 		if(client_ID != NULL && temp->client.usr.ID == client_ID){
 			return temp;
-		} else if(sockfd != NULL && temp->client.sockfd == sockfd){
+		} else if(sockfd != 0 && temp->client.sockfd == sockfd){
 			return temp;
 		} else{
 			temp = temp->next;
@@ -268,14 +268,14 @@ int verify_session(char * session_ID){
 
 void login(int sockfd, unsigned char source[], unsigned char data[]){
 	char packet_string[MAX_CHAR];
-	const char delim = ",";
-	char * client_ID = strtok(data, delim);
-	char * password = strtok(NULL, delim);
+	char delim = ',';
+	char * client_ID = strtok(data, &delim);
+	char * password = strtok(NULL, &delim);
 	struct Node * temp = find_client(sockfd, NULL);
 	if(temp == NULL){
 		printf("Not finding established connection\n");
 	}
-	if(find_client(NULL, client_ID, head) != NULL){
+	if(find_client(NULL, client_ID) != NULL){
 		struct message * m = create_message(LO_NAK, "", "Specified user is already logged in\n");
 		strcpy(packet_string, message_to_string(m));
 		if(send(sockfd, packet_string, sizeof(packet_string), 0) == -1){
@@ -305,7 +305,7 @@ void login(int sockfd, unsigned char source[], unsigned char data[]){
 }
 
 void logout(unsigned char source[]){
-	if(remove_client(source, head) == 0){
+	if(remove_client(source) == 0){
 		printf("Error removing client from linked list.");
 	}
 }
@@ -314,7 +314,7 @@ void join(int sockfd, unsigned char source[], unsigned char data[]){
 	//check to see if any of the current clients are in the specified session_ID
 	//if so, change the source client's session_ID to the one requested and send JN_ACK
 	//if not, or if the client has previously been in a session, send a JN_NAK
-	struct Node * client_node = find_client(NULL, source);
+	struct Node * client_node = find_client(0, source);
 	if(client_node == NULL){
 		printf("user not found\n");
 	}
@@ -325,7 +325,7 @@ void join(int sockfd, unsigned char source[], unsigned char data[]){
 	strcat(reply_data, ",");
 	if(strcmp(client_node->client.usr.session_ID, "attended") == 0){
 		//client has already attended a previous session
-		strcat(reply_data, "This user has already attended a session.")
+		strcat(reply_data, "This user has already attended a session.");
 		m = create_message(JN_NAK, "", reply_data);
 		strcpy(packet_string, message_to_string(m));
 		if(send(sockfd, packet_string, sizeof(packet_string), 0) == -1){
@@ -365,12 +365,11 @@ void join(int sockfd, unsigned char source[], unsigned char data[]){
 void leave_sess(unsigned char source[]){
 	//if current session ID is null, no change
 	//if current session ID is not null, set to "attended" to indicate that the client has been in a session and will not be able to join others
-	struct Node * client_node = find_client(NULL, source);
+	struct Node * client_node = find_client(0, source);
 	if(client_node == NULL){
 		printf("user not found\n");
 	}
 	if(client_node->client.usr.session_ID != NULL){
-		client_node->client.usr.session_ID = NULL;
 		strcpy(client_node->client.usr.session_ID, "attended");
 	}
 
@@ -379,7 +378,7 @@ void leave_sess(unsigned char source[]){
 void new_sess(int sockfd, unsigned char source[], unsigned char data[]){
 	//check to make sure session is not already in progress
 	//set source client's session ID to the specified value and send a NS_ACK
-	struct Node * client_node = find_client(NULL, source);
+	struct Node * client_node = find_client(0, source);
 	if(client_node == NULL){
 		printf("user not found\n");
 	}
@@ -413,13 +412,14 @@ void new_sess(int sockfd, unsigned char source[], unsigned char data[]){
 void message(unsigned char source[], unsigned char data[]){
 	//check current session ID for source client
 	//iterate through online clients and, if their session ID matches, send the data to the corresponding sockfd
-	struct Node * source_client = find_client(NULL, source);
+	struct Node * source_client = find_client(0, source);
 	if(source_client == NULL){
 		printf("user not found\n");
 	}
 	struct message * m;
 	char packet_string[MAX_CHAR];
-	char session[MAX_CHAR] = source_client->client.usr.session_ID;
+	char session[MAX_CHAR];
+	strcpy(session, source_client->client.usr.session_ID);
 
 	struct Node * dest_client = head;
 	while(dest_client != NULL){
