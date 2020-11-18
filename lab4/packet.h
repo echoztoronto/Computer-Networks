@@ -13,9 +13,10 @@
 #define LEAVE_SESS 8
 #define NEW_SESS 9
 #define NS_ACK 10
-#define MESSAGE 11
-#define QUERY 12
-#define QU_ACK 13
+#define NS_NAK 11
+#define MESSAGE 12
+#define QUERY 13
+#define QU_ACK 14
 
 #define MAX_NAME 50
 #define MAX_CHAR 100

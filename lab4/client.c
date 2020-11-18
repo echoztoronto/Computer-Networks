@@ -36,7 +36,7 @@ void createsession(char input[], int socketfd, bool *joined, char username[]);
 
 //list
 //get the list of connected clients and available sessions
-void list(char username[]);
+void list(int socketfd, char username[]);
 
 //quit
 //terminate the program
@@ -64,12 +64,6 @@ int main() {
     
     //use thread for receiving messages
 	//pthread_t rec_thread;
-    
-    
-    //testing 
-    //struct message* m = create_message(10, "Hello", "Hi Hi!");
-    //print_message(m);
-    //print_message(string_to_message(message_to_string(m)));
 
 	while(true) {
         
@@ -123,7 +117,7 @@ int main() {
             
         } else if (strcmp(command, "/list") == 0) {
             
-            list(username);
+            list(socketfd, username);
             
         } else if (strcmp(command,"/quit") == 0) {
             
@@ -248,12 +242,22 @@ int connect_server(char ip[], char port[]) {
 //send EXIT
 void logout(int *socketfd, bool *logged, char username[]) {
     
-    //send EXIT to server
+    //create packet_string
+    char packet_string[MAX_CHAR];
+    struct message *m = create_message(EXIT, username, "");
+    strcpy(packet_string, message_to_string(m));
     
+    //send packet_string to server
+    if(send(*socketfd, packet_string, sizeof(packet_string), 0) == ERROR) {
+        printf("failed to send '%s' to server\n", packet_string);
+        return;
+    } 
     
-    printf("logging out..\n");
-    
+    //close socket and reset variables
+    close(*socketfd);
+    *socketfd = ERROR;
     *logged = false;
+    printf("you are logged out..\n");
 }
 
 
@@ -262,15 +266,39 @@ void logout(int *socketfd, bool *logged, char username[]) {
 //send JOIN <session ID>
 //receive JN_ACK <session ID> or JN_NAK <session ID, reason>
 void joinsession(char input[], int socketfd, bool *joined, char username[]) {
+
+    char command[MAX_CHAR], sessionID[MAX_CHAR];
+    sscanf(input, "%s %s", &command, &sessionID);
     
-    //send JOIN <session ID>
+    //create packet_string
+    char packet_string[MAX_CHAR];
+    struct message *m = create_message(JOIN, username, sessionID);
+    strcpy(packet_string, message_to_string(m));
     
+    //send packet_string to server
+    if(send(socketfd, packet_string, sizeof(packet_string), 0) == ERROR) {
+        printf("failed to send '%s' to server\n", packet_string);
+        return;
+    } 
+        
+    //receive from server
+    char recv_message[MAX_CHAR];
     
-    //receive JN_ACK <session ID> or JN_NAK <session ID, reason>
-    
-    //if JN_ACK
-    printf("joining the session..\n");
-    *joined = true;
+    if(recv(socketfd, (char*)recv_message, sizeof(recv_message), 0) == ERROR) {
+       printf("failed to receive ACK from server\n");
+       return; 
+    } 
+        
+    struct message *r = string_to_message(recv_message);
+        
+    //JN_ACK <session ID> or JN_NAK <session ID, reason>
+    if(r->type == JN_ACK) {
+        *joined = true;
+        printf("you are now joined in session %s..\n", r->data);
+    }
+    else if (r->type == JN_NAK) {
+        printf("failed to join in session %s\n", r->data);
+    }
 }
 
 //leavesession
@@ -278,40 +306,96 @@ void joinsession(char input[], int socketfd, bool *joined, char username[]) {
 //send LEAVE_SESS
 void leavesession(int socketfd, bool *joined, char username[]) {
     
-    //send LEAVE_SESS
+    //create packet_string
+    char packet_string[MAX_CHAR];
+    struct message *m = create_message(LEAVE_SESS, username, "");
+    strcpy(packet_string, message_to_string(m));
     
+    //send packet_string to server
+    if(send(socketfd, packet_string, sizeof(packet_string), 0) == ERROR) {
+        printf("failed to send '%s' to server\n", packet_string);
+        return;
+    } 
     
-    printf("leaving the session..\n");
+    //close socket and reset variables
     *joined = false;
+    printf("you left the session..\n");
 }
 
 //createsession <session ID>
 //create a new session and join it
 //send NEW_SESS
-//receive NS_ACK <session ID>
+//receive NS_ACK <session ID> or NS_NAK
 void createsession(char input[], int socketfd, bool *joined, char username[]) {
     
     //send NEW_SESS
+    char command[MAX_CHAR], sessionID[MAX_CHAR];
+    sscanf(input, "%s %s", &command, &sessionID);
     
+    //create packet_string
+    char packet_string[MAX_CHAR];
+    struct message *m = create_message(NEW_SESS, username, sessionID);
+    strcpy(packet_string, message_to_string(m));
     
-    //receive NS_ACK <session ID>
+    //send packet_string to server
+    if(send(socketfd, packet_string, sizeof(packet_string), 0) == ERROR) {
+        printf("failed to send '%s' to server\n", packet_string);
+        return;
+    } 
+        
+    //receive from server
+    char recv_message[MAX_CHAR];
     
-    //if NS_ACK
-    printf("creating a session..\n");
-    *joined = true;
+    if(recv(socketfd, (char*)recv_message, sizeof(recv_message), 0) == ERROR) {
+       printf("failed to receive ACK from server\n");
+       return; 
+    } 
+        
+    struct message *r = string_to_message(recv_message);
+        
+    //NS_ACK <session ID> or NS_NAK
+    if(r->type == NS_ACK) {
+        *joined = true;
+        printf("new session created: %s..\n", r->data);
+    }
+    else if (r->type == NS_NAK) {
+        printf("failed to create session %s\n", sessionID);
+    }
+    
 }
 
 //list
 //get the list of connected clients and available sessions
 //send QUERY
 //receive QU_ACK <users and sessions>
-void list(char username[]) {
+void list(int socketfd, char username[]) {
     
-    //send QUERY
-    //receive QU_ACK <users and sessions>
+    //create packet_string
+    char packet_string[MAX_CHAR];
+    struct message *m = create_message(QUERY, username, "");
+    strcpy(packet_string, message_to_string(m));
     
-    printf("geting the list of connected clients and available sessions..\n");
-    //print the list
+    //send packet_string to server
+    if(send(socketfd, packet_string, sizeof(packet_string), 0) == ERROR) {
+        printf("failed to send '%s' to server\n", packet_string);
+        return;
+    } 
+        
+    //receive from server
+    char recv_message[MAX_CHAR];
+    
+    if(recv(socketfd, (char*)recv_message, sizeof(recv_message), 0) == ERROR) {
+       printf("failed to receive ACK from server\n");
+       return; 
+    } 
+        
+    struct message *r = string_to_message(recv_message);
+        
+    //QU_AC
+    if(r->type == QU_ACK) {
+        printf("geting the list of connected clients and available sessions..\n");
+        printf("%s", r->data);
+    }
     
 }
 
@@ -320,9 +404,18 @@ void list(char username[]) {
 //send MESSAGE <message data>
 void sendtext(char input[], int socketfd, char username[]) {
     
-    //send MESSAGE <message data>
+    //create packet_string
+    char packet_string[MAX_CHAR];
+    struct message *m = create_message(MESSAGE, username, input);
+    strcpy(packet_string, message_to_string(m));
     
-    printf("sending..\n"); 
+    //send packet_string to server
+    if(send(socketfd, packet_string, sizeof(packet_string), 0) == ERROR) {
+        printf("failed to send '%s' to server\n", packet_string);
+        return;
+    } 
+    
+    printf("(sent)\n"); 
 }
 
 
