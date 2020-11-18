@@ -11,9 +11,6 @@
 #include "packet.h"
 
 
-#define ERROR -1
-
-
 //login <client ID> <password> <server-IP> <server-port>
 //log into the server at the given address and port
 void login(char input[], int *socketfd, bool *logged, char username[]);
