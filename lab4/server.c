@@ -117,6 +117,7 @@ int main(int argc, char *argv[])
     while(1){
     	readfds = fd_list;
 
+    	printf("Calling select()");
     	if(select(max_fd+1, &readfds, NULL, NULL, NULL) == -1){
     		perror("Error calling select()");
     		printf("Exiting...\n");
@@ -170,6 +171,10 @@ int main(int argc, char *argv[])
     						case EXIT:
     							logout(temp_message->source);
     							close(i);
+    							FD_CLR(i, &fd_list);
+    							if(i == max_fd){
+    								max_fd = recalculate_max_fd();
+    							}
     							break;
     						case JOIN:
     							join(i, temp_message->source, temp_message->data);
@@ -254,6 +259,18 @@ int remove_client(char * client_ID){
 		}
 	}
 	return 0;
+}
+
+int recalculate_max_fd(){
+	printf("Recalculating max_fd\n");
+	struct Node * temp = head;
+	int max = 0;
+	while(temp != NULL){
+		if(temp->client.sockfd > max){
+			max = temp->client.sockfd;
+		}
+		temp = temp->next;
+	}
 }
 
 int verify_login(char * client_ID, char * password){
@@ -469,15 +486,17 @@ void list(int sockfd){
 
 	while(client != NULL){
 		strcat(online_users, client->client.usr.ID);
+		strcat(online_users, " ");
 		if(client->client.usr.session_ID != NULL){
 			if(strcmp(client->client.usr.session_ID, "attended") != 0 && strstr(active_sessions, client->client.usr.session_ID) == NULL){
 				//the user is currently in a session and that session has not been added to the list yet
 				strcat(active_sessions, client->client.usr.session_ID);
-				strcat(active_sessions, ", ");
+				strcat(active_sessions, " ");
 			}
 		}
 		client = client->next;
 	}
+	strcat(active_sessions, "\n");
 
 	strcpy(reply_data, online_users);
 	strcat(reply_data, active_sessions);
