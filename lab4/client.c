@@ -50,16 +50,16 @@ int connect_server(char ip[], char port[]);
 
 
 int main() {
-	char input[MAX_CHAR], command[MAX_CHAR], username[MAX_CHAR];
-	int socketfd;
+    char input[MAX_CHAR], command[MAX_CHAR], username[MAX_CHAR];
+    int socketfd;
     bool logged = false;
     bool joined = false;
     bool thread_on = false;
     pthread_t recv_thread;
 
-	while(true) {
+    while(true) {
         
-		fgets(input, MAX_CHAR, stdin);
+	fgets(input, MAX_CHAR, stdin);
         sscanf(input, "%s", &command);
         
         //turn on thread to receive messages while in session
