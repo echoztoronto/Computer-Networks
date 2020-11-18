@@ -70,8 +70,13 @@ struct message* string_to_message(char buf[]) {
     
     char temp[MAX_NAME];
     sscanf(buf, "%d:%d:%s:%s", &m->type, &m->size, temp);
-    //temp will contain source and : and the 1st word of data
-    strcpy(m->source, strtok(temp, ":"));
+    
+    //temp will contain source and : and the 1st word of data 
+    if(strtok(temp, ":") == NULL) {
+        strcpy(m->source, "");
+    } else {
+        strcpy(m->source, strtok(temp, ":"));
+    }
     
     //get data (after the 3rd ':')
     unsigned int data_index = 0, j = 0;
@@ -85,7 +90,7 @@ struct message* string_to_message(char buf[]) {
             }
         }
     }
-
+    
     strcpy(m->data, &buf[data_index]);
     
     return m; 

@@ -160,12 +160,8 @@ void login(char input[], int *socketfd, bool *logged, char username[]) {
     char command[MAX_CHAR], clientID[MAX_CHAR], password[MAX_CHAR], serverIP[MAX_CHAR], serverPort[MAX_CHAR];
     sscanf(input, "%s %s %s %s %s", &command, &clientID, &password, &serverIP, &serverPort);
     
-    printf("DEBUG, socketfd before connecting to server: %d\n", *socketfd);
-    
     strcpy(username, clientID);
     *socketfd = connect_server(serverIP, serverPort);
-
-    printf("DEBUG, socketfd after connecting to server: %d\n", *socketfd);
 
     if(*socketfd == ERROR) {
         printf("cannot log you in, please try again\n");
@@ -184,7 +180,6 @@ void login(char input[], int *socketfd, bool *logged, char username[]) {
         
         //send packet_string to server
         unsigned int send_status = ERROR;
-        printf("DEBUG send_status before sending message: %d\n", send_status);
         
         send_status = send(*socketfd, packet_string, sizeof(packet_string), 0);
         if( send_status == ERROR) {
@@ -194,14 +189,10 @@ void login(char input[], int *socketfd, bool *logged, char username[]) {
             return;
         } 
         
-        printf("DEBUG send_status after sending message: %d\n", send_status);
-        
         //receive from server
         char recv_message[MAX_CHAR];
         unsigned int recv_status = ERROR;
-        printf("DEBUG recv_status before receiving message: %d\n", recv_status);
         recv_status = recv(*socketfd, (char*)recv_message, sizeof(recv_message), 0);
-        printf("DEBUG recv_status after receiving message: %d\n", recv_status);
         
         if(recv_status == ERROR) {
            printf("failed to receive ACK from server\n");
@@ -210,7 +201,7 @@ void login(char input[], int *socketfd, bool *logged, char username[]) {
            return; 
         } 
         
-        printf("I'm here 4 %s\n", recv_message);
+        printf("recv message: %s\n", recv_message);
         
         struct message *r = string_to_message(recv_message);
         
