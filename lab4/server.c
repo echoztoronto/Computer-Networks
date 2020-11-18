@@ -6,6 +6,7 @@
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <math.h>
 #include "packet.h"
 
 void login(int sockfd, unsigned char source[], unsigned char data[]);
@@ -59,7 +60,7 @@ User usr4;
 usr4.ID = "Mary";
 usr4.pwd = "wR5mx72";*/
 
-User approved_users[] = { {"Yuwen", "lp473f9", NULL}, {"Ryan", "qXp62v3", NULL}, {"Jason", "bt4zAp8", NULL}, {"Mary", "wR5mx72", NULL} };
+User approved_users[] = { {"Yuwen", "lp473f9", ""}, {"Ryan", "qXp62v3", ""}, {"Jason", "bt4zAp8", ""}, {"Mary", "wR5mx72", ""} };
 
 int main(int argc, char *argv[])
 {
@@ -275,7 +276,7 @@ void login(int sockfd, unsigned char source[], unsigned char data[]){
 	if(temp == NULL){
 		printf("Not finding established connection\n");
 	}
-	if(find_client(NULL, client_ID) != NULL){
+	if(find_client(0, client_ID) != NULL){
 		struct message * m = create_message(LO_NAK, "", "Specified user is already logged in\n");
 		strcpy(packet_string, message_to_string(m));
 		if(send(sockfd, packet_string, sizeof(packet_string), 0) == -1){
@@ -437,7 +438,7 @@ void message(unsigned char source[], unsigned char data[]){
 	}
 }
 
-void list(sockfd){
+void list(int sockfd){
 	//send QU_ACK
 	//iterate through client linked list and send all user IDs and session IDs, being sure to check for duplicates
 	struct message * m;
