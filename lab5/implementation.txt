@@ -1,0 +1,58 @@
+I. Mulitiple sessions
+    1. one client joins mulitiple sessions
+        - sends JOIN or NEW_SESS for each session
+        
+    2. server keeps record 
+        - receives JOIN/NEW_SESS
+        - creates a list of clientID and sessionID
+
+    3. any client sends message
+        - sends MESSAGE 
+
+    4. server forwards message
+        - receives MESSAGE, gets clientID from the struct
+        - gets all sessionID assoicated with this clientID
+        - checks which clients are in these sessions
+        - sends MESSAGE to these clients
+
+II. Invite
+new packet types: assume John wants to invite Mary
+    - INVITE <clientID> <sessionID>        John -> server
+    - INVITE_ACK                           server -> John, invitation sent
+    - INVITE_NAK <reason>                  server -> John, invitation failed
+    - INVITATION <clientID> <sessionID>    server -> Mary
+    - INV_ACCEPT                           Mary -> server, accept invitation
+    - INV_REJECT                           Mary -> server, reject invitation
+    - INV_RESPONSE <"accepted"/"rejected"> server -> John
+
+    1. John: INVITE Mary chat
+        - sends INVITE:clientID:sessionID to server
+
+    2. server sends ACK or NAK to John
+        - receives INVITE, get clientID and sessionID
+        - checks if clientID exists: "There is no user <clientID>"
+        - checks if sessionID exists: "There is no session <sessionID>"
+        - checks if sender is in this session: "You are not in session <sessionID>"
+        - checks if invited client is in session: "user <clientID> is already in session <sessionID>"
+        - sends INVITE_ACK or INVITE_NAK back to the sender
+        - sends INVITATION <clientID> to the client
+
+    3. Mary: responds to the invitation
+        - receives INVITATION, get clientID (of the sender)
+        - display: "<clientID> invites you to session <sessionID>"
+        - display: "type 'y' to accept, 'n' to reject"
+        - sends INV_ACCEPT or INV_REJECT to server
+
+    4. server deals with the response
+        - if INV_ACCEPT: 
+            - add invited client to session
+            - sends INV_RESPONSE accepted to the sender
+        - if INV_REJECT:
+            - sends INV_RESPONSE rejected to the sender
+
+    5. John: gets nofitified 
+        - receives INV_RESPONSE accepted/rejected
+        - display: "your invitation is < >"
+
+
+
