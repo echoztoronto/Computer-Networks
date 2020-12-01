@@ -523,13 +523,15 @@ void *receivemessage(void* socketfd) {
                         responded = true;
                     }
                     else {
-                        print("please type 'y' or 'n'");
+                        printf("please type 'y' or 'n'");
                         memset(input, 0, sizeof input);
                         memset(command, 0, sizeof command);
                     }
                 }
+            }
 
             free(r);
+            
         }
         memset(buf, 0, sizeof buf);
     }
@@ -553,11 +555,9 @@ void invite(char input[], int socketfd, char username[]) {
     //send packet_string to server
     unsigned int send_status = ERROR;
     
-    send_status = send(*socketfd, packet_string, sizeof(packet_string), 0);
+    send_status = send(socketfd, packet_string, sizeof(packet_string), 0);
     if( send_status == ERROR) {
         printf("failed to send '%s' to server\n", packet_string);
-        close(*socketfd);
-        *socketfd = ERROR;
         return;
     } 
     
@@ -578,8 +578,8 @@ void invite(char input[], int socketfd, char username[]) {
         //receive INV_RESPONSE 
         char recv_message_2[MAX_CHAR];
         if(recv(socketfd, (char*)recv_message_2, sizeof(recv_message_2), 0) == ERROR) {
-        printf("failed to receive INV_RESPONSE from server\n");
-        return; 
+            printf("failed to receive INV_RESPONSE from server\n");
+            return; 
         } 
             
         struct message *res = string_to_message(recv_message_2);
@@ -588,5 +588,4 @@ void invite(char input[], int socketfd, char username[]) {
         }
     }
 
-    
 }
