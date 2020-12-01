@@ -47,7 +47,7 @@ new packet types: assume John wants to invite Mary
             - INVITATION->source is the sender's clientID
             - INVITATION->data is sessionID
 
-    3. Mary: responds to the invitation
+    3. Mary: responds to the invitation   (DONE)
         - receives INVITATION
         - displays: "<clientID> invites you to session <sessionID>"
         - displays: "type 'y' to accept, 'n' to reject"
