@@ -32,7 +32,8 @@ new packet types: assume John wants to invite Mary
     - INV_RESPONSE <"accepted"/"rejected"> server -> John
 
     1. John: INVITE Mary chat
-        - sends INVITE:clientID:sessionID to server
+        - sends INVITE to server
+            - INVITE->data = "clientID,sessionID"
 
     2. server sends ACK or NAK to John
         - receives INVITE, get clientID and sessionID
