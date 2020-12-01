@@ -14,6 +14,10 @@ I. Mulitiple sessions
         - gets all sessionID assoicated with this clientID
         - checks which clients are in these sessions
         - sends MESSAGE ("<sessionID>: <message>") to these clients
+        
+    5. client receives message
+        - receives MESSAGE
+        - display "<sessionID> <userID>: <message>"   e.g. "(happychat) John: Hi!"
 
 II. Invite
 new packet types: assume John wants to invite Mary
