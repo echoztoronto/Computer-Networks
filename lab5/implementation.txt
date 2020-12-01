@@ -23,17 +23,17 @@ I. Mulitiple sessions
 
 II. Invite
 new packet types: assume John wants to invite Mary
-    - INVITE <clientID> <sessionID>        John -> server
+    - INVITE <clientID>,<sessionID>        John -> server
     - INVITE_ACK                           server -> John, invitation sent
     - INVITE_NAK <reason>                  server -> John, invitation failed
-    - INVITATION <clientID> <sessionID>    server -> Mary
+    - INVITATION <sessionID>               server -> Mary
     - INV_ACCEPT                           Mary -> server, accept invitation
     - INV_REJECT                           Mary -> server, reject invitation
     - INV_RESPONSE <"accepted"/"rejected"> server -> John
 
-    1. John: INVITE Mary chat
+    1. John: INVITE Mary chat         (DONE)
         - sends INVITE to server
-            - INVITE->data = "clientID,sessionID"
+            - INVITE->data = "clientID,sessionID" 
 
     2. server sends ACK or NAK to John
         - receives INVITE, get clientID and sessionID
@@ -42,11 +42,13 @@ new packet types: assume John wants to invite Mary
             - checks if sessionID exists: "There is no session <sessionID>"
             - checks if sender is in this session: "You are not in session <sessionID>"
             - checks if invited client is in session: "user <clientID> is already in session <sessionID>"
-        - sends INVITE_ACK or INVITE_NAK (NAK with reason) back to the sender
-        - sends INVITATION <clientID> to the client
+        - sends INVITE_ACK or INVITE_NAK (NAK->data = reason) back to the sender
+        - sends INVITATION to the client
+            - INVITATION->source is the sender's clientID
+            - INVITATION->data is sessionID
 
     3. Mary: responds to the invitation
-        - receives INVITATION, get clientID (of the sender)
+        - receives INVITATION
         - displays: "<clientID> invites you to session <sessionID>"
         - displays: "type 'y' to accept, 'n' to reject"
         - sends INV_ACCEPT or INV_REJECT to server
@@ -59,7 +61,7 @@ new packet types: assume John wants to invite Mary
             - sends INV_RESPONSE rejected to the sender
         - note: "accepted" and "rejected" are in INV_RESPONSE->data field
 
-    5. John: gets nofitified 
+    5. John: gets nofitified    (DONE)
         - receives INV_RESPONSE 
         - display: "your invitation is < >"  (INV_RESPONSE->data)
 
