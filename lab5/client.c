@@ -542,9 +542,8 @@ void invite(char input[], int socketfd, char username[]) {
     char command[MAX_CHAR], clientID[MAX_CHAR], sessionID[MAX_CHAR];
     sscanf(input, "%s %s %s", &command, &clientID, &sessionID);
 
-    //create message then convert it to string 
+    //create INVITE message then convert it to string 
     char message_data[MAX_CHAR], packet_string[MAX_CHAR];
-    
     strcpy(message_data, clientID);
     strcat(message_data, ",");
     strcat(message_data, sessionID);
@@ -562,20 +561,32 @@ void invite(char input[], int socketfd, char username[]) {
         return;
     } 
     
-    //receive from server
+    //receive INVITE_ACK or INVITE_NAK 
     char recv_message[MAX_CHAR];
-    recv_status = recv(*socketfd, (char*)recv_message, sizeof(recv_message), 0);
-
     if(recv(socketfd, (char*)recv_message, sizeof(recv_message), 0) == ERROR) {
        printf("failed to receive ACK from server\n");
        return; 
     } 
         
     struct message *r = string_to_message(recv_message);
-        
-    //INV_RESPONSE
-    if(r->type == INV_RESPONSE) {
-        printf("your invitation is %s", r->data);
+    if(r->type == INVITE_NAK) {
+        printf("Failed to invite: %s\n", r->data);
+    }
+    else if (r->type == INVITE_ACK) {
+        printf("Invitation sent.\n");
+
+        //receive INV_RESPONSE 
+        char recv_message_2[MAX_CHAR];
+        if(recv(socketfd, (char*)recv_message_2, sizeof(recv_message_2), 0) == ERROR) {
+        printf("failed to receive INV_RESPONSE from server\n");
+        return; 
+        } 
+            
+        struct message *res = string_to_message(recv_message_2);
+        if(res->type == INV_RESPONSE) {
+            printf("your invitation is %s\n", res->data);
+        }
     }
 
+    
 }
