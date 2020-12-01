@@ -13,7 +13,7 @@ I. Mulitiple sessions
         - receives MESSAGE, gets clientID from the struct
         - gets all sessionID assoicated with this clientID
         - checks which clients are in these sessions
-        - sends MESSAGE to these clients
+        - sends MESSAGE ("<sessionID>: <message>") to these clients
 
 II. Invite
 new packet types: assume John wants to invite Mary
