@@ -87,9 +87,7 @@ int main() {
             if(!logged) {
                 printf("you are not logged in!\n");
             }
-            else if(joined) {
-                printf("you can only join one session!\n");
-            } else {
+            else {
                 joinsession(input, socketfd, &joined, username);
             }
             
@@ -464,6 +462,7 @@ void help() {
     printf("/list\n");
     printf("/quit\n");
     printf("/help\n");
+    printf("/invite <clientID> <sessionID>\n");
     printf("**********************************************************\n");
 }
 
@@ -537,7 +536,7 @@ void *receivemessage(void* socketfd) {
 }
 
 
-//invite INVITE <clientID> <sessionID>
+//invite: INVITE <clientID> <sessionID>
 //(lab5 extra feature)
 void invite(char input[], int socketfd, char username[]) {
     char command[MAX_CHAR], clientID[MAX_CHAR], sessionID[MAX_CHAR];
@@ -549,7 +548,7 @@ void invite(char input[], int socketfd, char username[]) {
     strcpy(message_data, clientID);
     strcat(message_data, ",");
     strcat(message_data, sessionID);
-    struct message *m = create_message(LOGIN, clientID, message_data);
+    struct message *m = create_message(INVITE, username, message_data);
     strcpy(packet_string, message_to_string(m));
     
     //send packet_string to server
