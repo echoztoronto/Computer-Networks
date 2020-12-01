@@ -19,6 +19,13 @@
 #define MESSAGE 12
 #define QUERY 13
 #define QU_ACK 14
+#define INVITE 15
+#define INVITE_ACK 16
+#define INVITE_NAK 17   
+#define INVITATION 18
+#define INV_ACCEPT 19                         
+#define INV_REJECT 20                    
+#define INV_RESPONSE 21
 
 #define MAX_NAME 50
 #define MAX_CHAR 100

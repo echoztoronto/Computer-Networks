@@ -13,11 +13,13 @@ I. Mulitiple sessions
         - receives MESSAGE, gets clientID from the struct
         - gets all sessionID assoicated with this clientID
         - checks which clients are in these sessions
-        - sends MESSAGE ("<sessionID>: <message>") to these clients
+        - sends MESSAGE to these clients
+            - MESSAGE->data: "(sessionID) clientID: message"  
+            - e.g. "(happychat) John: Hi!"
         
     5. client receives message
         - receives MESSAGE
-        - display "<sessionID> <userID>: <message>"   e.g. "(happychat) John: Hi!"
+        - displays MESSAGE->data 
 
 II. Invite
 new packet types: assume John wants to invite Mary
@@ -34,29 +36,31 @@ new packet types: assume John wants to invite Mary
 
     2. server sends ACK or NAK to John
         - receives INVITE, get clientID and sessionID
-        - checks if clientID exists: "There is no user <clientID>"
-        - checks if sessionID exists: "There is no session <sessionID>"
-        - checks if sender is in this session: "You are not in session <sessionID>"
-        - checks if invited client is in session: "user <clientID> is already in session <sessionID>"
-        - sends INVITE_ACK or INVITE_NAK back to the sender
+        - error checks
+            - checks if clientID exists: "There is no user <clientID>"
+            - checks if sessionID exists: "There is no session <sessionID>"
+            - checks if sender is in this session: "You are not in session <sessionID>"
+            - checks if invited client is in session: "user <clientID> is already in session <sessionID>"
+        - sends INVITE_ACK or INVITE_NAK (NAK with reason) back to the sender
         - sends INVITATION <clientID> to the client
 
     3. Mary: responds to the invitation
         - receives INVITATION, get clientID (of the sender)
-        - display: "<clientID> invites you to session <sessionID>"
-        - display: "type 'y' to accept, 'n' to reject"
+        - displays: "<clientID> invites you to session <sessionID>"
+        - displays: "type 'y' to accept, 'n' to reject"
         - sends INV_ACCEPT or INV_REJECT to server
 
     4. server deals with the response
         - if INV_ACCEPT: 
-            - add invited client to session
+            - adds invited client to session
             - sends INV_RESPONSE accepted to the sender
         - if INV_REJECT:
             - sends INV_RESPONSE rejected to the sender
+        - note: "accepted" and "rejected" are in INV_RESPONSE->data field
 
     5. John: gets nofitified 
-        - receives INV_RESPONSE accepted/rejected
-        - display: "your invitation is < >"
+        - receives INV_RESPONSE 
+        - display: "your invitation is < >"  (INV_RESPONSE->data)
 
 
 
