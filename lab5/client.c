@@ -44,6 +44,10 @@ void *receivemessage(void* socketfd);
 //display all valid commands
 void help();
 
+//invite INVITE <clientID> <sessionID>
+//(lab5 extra feature)
+void invite(char input[], int socketfd, char username[]);
+
 //connect to server (helper for login)
 int connect_server(char ip[], char port[]);
 
@@ -122,6 +126,10 @@ int main() {
             
             help();
             
+        } else if (strcmp(command, "/invite") == 0) {
+            
+            invite(input, socketfd, username);
+            
         } else {
             
             if(!logged || !joined) {
@@ -182,6 +190,12 @@ void login(char input[], int *socketfd, bool *logged, char username[]) {
             printf("failed to send '%s' to server\n", packet_string);
             close(*socketfd);
             *socketfd = ERROR;
+            memset(clientID, 0, sizeof clientID);
+            memset(password, 0, sizeof password);
+            memset(serverIP, 0, sizeof serverIP);
+            memset(serverPort, 0, sizeof serverPort);
+            memset(message_data, 0, sizeof message_data);
+            memset(packet_string, 0, sizeof packet_string);
             return;
         } 
         
@@ -194,6 +208,12 @@ void login(char input[], int *socketfd, bool *logged, char username[]) {
            printf("failed to receive ACK from server\n");
            close(*socketfd);
            *socketfd = ERROR;
+            memset(clientID, 0, sizeof clientID);
+            memset(password, 0, sizeof password);
+            memset(serverIP, 0, sizeof serverIP);
+            memset(serverPort, 0, sizeof serverPort);
+            memset(message_data, 0, sizeof message_data);
+            memset(packet_string, 0, sizeof packet_string);
            return; 
         } 
         
@@ -207,6 +227,12 @@ void login(char input[], int *socketfd, bool *logged, char username[]) {
         }
         else if (r->type == LO_NAK) {
             printf("failed to logged in, reason: %s\n", r->data);
+            memset(clientID, 0, sizeof clientID);
+            memset(password, 0, sizeof password);
+            memset(serverIP, 0, sizeof serverIP);
+            memset(serverPort, 0, sizeof serverPort);
+            memset(message_data, 0, sizeof message_data);
+            memset(packet_string, 0, sizeof packet_string);
         }
     }
 }
@@ -457,8 +483,100 @@ void *receivemessage(void* socketfd) {
             if(r->type == MESSAGE) {
                 printf("%s: %s\n", r->source, r->data);
             }
+
+            if(r->type == INVITATION) {
+                printf("%s invites you to session %s\n", r->source, r->data);
+                printf("type 'y' to accept, 'n' to reject\n");
+
+                //loop until client responses (with valid command)
+                char input[MAX_CHAR], command[MAX_CHAR];
+                bool responded = false;
+
+                while (!responded) {
+                    fgets(input, MAX_CHAR, stdin);
+                    sscanf(input, "%s", &command);
+
+                    //sends INV_ACCEPT or INV_REJECT to server
+                    if (strcmp(command, "y") == 0) {
+                        //create packet_string
+                        char packet_string[MAX_CHAR];
+                        struct message *m = create_message(INV_ACCEPT, "", "");
+                        strcpy(packet_string, message_to_string(m));
+                        
+                        //send packet_string to server
+                        if(send(socketfd, packet_string, sizeof(packet_string), 0) == ERROR) {
+                            printf("failed to send '%s' to server\n", packet_string);
+                            return;
+                        } 
+                        responded = true;
+                    } 
+                    else if (strcmp(command, "n") == 0) {
+                        //create packet_string
+                        char packet_string[MAX_CHAR];
+                        struct message *m = create_message(INV_REJECT, "", "");
+                        strcpy(packet_string, message_to_string(m));
+                        
+                        //send packet_string to server
+                        if(send(socketfd, packet_string, sizeof(packet_string), 0) == ERROR) {
+                            printf("failed to send '%s' to server\n", packet_string);
+                            return;
+                        } 
+                        responded = true;
+                    }
+                    else {
+                        print("please type 'y' or 'n'");
+                        memset(input, 0, sizeof input);
+                        memset(command, 0, sizeof command);
+                    }
+                }
+
             free(r);
         }
         memset(buf, 0, sizeof buf);
     }
+}
+
+
+//invite INVITE <clientID> <sessionID>
+//(lab5 extra feature)
+void invite(char input[], int socketfd, char username[]) {
+    char command[MAX_CHAR], clientID[MAX_CHAR], sessionID[MAX_CHAR];
+    sscanf(input, "%s %s %s", &command, &clientID, &sessionID);
+
+    //create message then convert it to string 
+    char message_data[MAX_CHAR], packet_string[MAX_CHAR];
+    
+    strcpy(message_data, clientID);
+    strcat(message_data, ",");
+    strcat(message_data, sessionID);
+    struct message *m = create_message(LOGIN, clientID, message_data);
+    strcpy(packet_string, message_to_string(m));
+    
+    //send packet_string to server
+    unsigned int send_status = ERROR;
+    
+    send_status = send(*socketfd, packet_string, sizeof(packet_string), 0);
+    if( send_status == ERROR) {
+        printf("failed to send '%s' to server\n", packet_string);
+        close(*socketfd);
+        *socketfd = ERROR;
+        return;
+    } 
+    
+    //receive from server
+    char recv_message[MAX_CHAR];
+    recv_status = recv(*socketfd, (char*)recv_message, sizeof(recv_message), 0);
+
+    if(recv(socketfd, (char*)recv_message, sizeof(recv_message), 0) == ERROR) {
+       printf("failed to receive ACK from server\n");
+       return; 
+    } 
+        
+    struct message *r = string_to_message(recv_message);
+        
+    //INV_RESPONSE
+    if(r->type == INV_RESPONSE) {
+        printf("your invitation is %s", r->data);
+    }
+
 }
