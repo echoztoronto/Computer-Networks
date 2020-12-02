@@ -302,11 +302,13 @@ int verify_session(char * session_ID){
 	printf("In verify_session!!\n");
 	struct Node * temp = head;
 	char delim = ',';
+	char usr_sess_list[MAX_CHAR];
 	char * session_name;
 	while(temp != NULL){
-		session_name = strtok(temp->client.usr.session_ID, &delim);
+		strcpy(usr_sess_list, temp->client.usr.session_ID);
+		session_name = strtok(usr_sess_list, &delim);
 		while(session_name != NULL){
-			printf("session_name: %s", session_name);
+			printf("session_name: %s\n", session_name);
 			if(strcmp(session_name, session_ID) == 0){
 				printf("Done verify_session. Found a match.\n");
 				return 1;
@@ -473,15 +475,9 @@ void new_sess(int sockfd, unsigned char source[], unsigned char data[]){
 			exit(1);
 		}
 	} else{
-		printf("Session IDs before new one: %s\n", client_node->client.usr.session_ID);
-		if(client_node->client.usr.session_ID == NULL || strcmp(client_node->client.usr.session_ID, "") == 0){
-			strcat(client_node->client.usr.session_ID, data);
-			strcat(client_node->client.usr.session_ID, ",");
-		} else{
-			strcat(client_node->client.usr.session_ID, ",");
-			strcat(client_node->client.usr.session_ID, data);
-			strcat(client_node->client.usr.session_ID, ",");
-		}
+		printf("Session IDs before new one: %s\n", client_node->client.usr.session_ID);	
+		strcat(client_node->client.usr.session_ID, data);
+		strcat(client_node->client.usr.session_ID, ",");
 		printf("Session IDs after new one: %s\n", client_node->client.usr.session_ID);
 		m = create_message(NS_ACK, "", reply_data);
 		strcpy(packet_string, message_to_string(m));
@@ -506,33 +502,34 @@ void message(unsigned char source[], unsigned char data[]){
 	char packet_string[MAX_CHAR];
 	char * session;
 	char * source_session;
+	char source_session_list[MAX_CHAR];
+	char dest_session_list[MAX_CHAR];
 	char delim = ',';
 
 	//iterate through each session attended by the source client
-	source_session = strtok(source_client->client.usr.session_ID, &delim);
+	strcpy(source_session_list, source_client->client.usr.session_ID);
+	printf("source_session_list: %s\n", source_session_list);
+	source_session = strtok(source_session_list, &delim);
 	while(source_session != NULL){
+		printf("source_session: %s\n", source_session);
 		//send messages to all clients also currently attending the same session(s)
 		struct Node * dest_client = head;
 		while(dest_client != NULL){
-			//iterate through each 
-			session = strtok(dest_client->client.usr.session_ID, &delim);
-			while(session != NULL){
-				//if the dest_client is not the source client and a common session has been found
-				if(strcmp(dest_client->client.usr.ID, source) != 0 && strcmp(session, source_session) == 0){
-					//the current dest_client is in the same session and is not the sender, so they should receive the message
-					m = create_message(MESSAGE, source, data);
-					strcpy(packet_string, message_to_string(m));
-					if(send(dest_client->client.sockfd, packet_string, sizeof(packet_string), 0) == -1){
-						perror("Error calling send()");
-						printf("Exiting...\n");
-						exit(1);
-					}
+			//if the dest_client is not the source client and a common session has been found
+			if(strcmp(dest_client->client.usr.ID, source) != 0 && strstr(dest_client->client.usr.session_ID, source_session) != NULL){
+				//the current dest_client is in the same session and is not the sender, so they should receive the message
+				m = create_message(MESSAGE, source, data);
+				strcpy(packet_string, message_to_string(m));
+				if(send(dest_client->client.sockfd, packet_string, sizeof(packet_string), 0) == -1){
+					perror("Error calling send()");
+					printf("Exiting...\n");
+					exit(1);
 				}
-				session = strtok(NULL, &delim);
 			}
 			dest_client = dest_client->next;
 		}
 		source_session = strtok(NULL, &delim);
+
 	}
 	printf("Done message\n");
 }
