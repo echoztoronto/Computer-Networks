@@ -303,15 +303,12 @@ int verify_session(char * session_ID){
 	struct Node * temp = head;
 	char delim = ',';
 	char * session_name;
-	session_name = strtok(temp->client.usr.session_ID, ",");
-	if(session_name == NULL){
-		printf("session_name is null in verify_session\n");
-	}
 	while(temp != NULL){
+		session_name = strtok(temp->client.usr.session_ID, ",");
 		while(session_name != NULL){
 			printf("session_name: %s", session_name);
 			if(strcmp(session_name, session_ID) == 0){
-				printf("Done verify_session\n");
+				printf("Done verify_session. Found a match.\n");
 				return 1;
 			}
 			session_name = strtok(NULL, &delim);
@@ -320,7 +317,7 @@ int verify_session(char * session_ID){
 	}
 
 	//the session named "session_ID" does not exist yet or has been terminated
-	printf("Done verify_session\n");
+	printf("Done verify_session. No match.\n");
 	return 0;
 }
 
