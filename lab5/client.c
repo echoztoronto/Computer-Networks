@@ -51,20 +51,26 @@ void invite(char input[], int socketfd, char username[]);
 //connect to server (helper for login)
 int connect_server(char ip[], char port[]);
 
+pthread_t recv_thread;
+pthread_mutex_t lock;
 
 int main() {
     char input[MAX_CHAR], command[MAX_CHAR], username[MAX_CHAR];
     int socketfd;
     bool logged = false;
     bool joined = false;
-    pthread_t recv_thread;
+    //pthread_t recv_thread;
+    if(pthread_mutex_init(&lock, NULL) != 0){
+        printf("Could not initialize mutex lock\n");
+    }
 
     while(true) {
         bool create_thread = true;
         
         int* socketfd_p = &socketfd;
         pthread_create(&recv_thread, NULL, receivemessage, socketfd_p);
-        
+
+        pthread_mutex_lock(&lock);
         fgets(input, MAX_CHAR, stdin);
         sscanf(input, "%s", &command);
         
@@ -142,8 +148,10 @@ int main() {
                 sendtext(input, socketfd, username);
             }
         }
+        pthread_mutex_unlock(&lock);
     }
     
+    pthread_mutex_destroy(&lock);
 	return 0;
 }
 
@@ -484,6 +492,7 @@ void *receivemessage(void* socketfd) {
             }
 
             if(r->type == INVITATION) {
+                pthread_mutex_lock(&lock);
                 printf("%s invites you to session %s\n", r->source, r->data);
                 printf("type 'y' to accept, 'n' to reject\n");
 
@@ -536,6 +545,7 @@ void *receivemessage(void* socketfd) {
                         memset(command, 0, sizeof command);
                     }
                 }
+                pthread_mutex_unlock(&lock);
             }
             
             free(r);
