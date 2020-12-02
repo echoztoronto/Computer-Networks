@@ -298,27 +298,25 @@ int verify_login(char * client_ID, char * password){
 }
 
 int verify_session(char * session_ID){
+	printf("In verify_session!!\n");
 	struct Node * temp = head;
-	char * session_name = NULL;
 	char delim = ',';
+	char * session_name;
+	session_name = strtok(temp->client.usr.session_ID, ",");
 	while(temp != NULL){
-		if(session_name = strtok(temp->client.usr.session_ID, &delim) != NULL){
-			while(session_name != NULL){
-				if(strcmp(session_name, session_ID) == 0){
-					return 1;
-				} else{
-					session_name = strtok(NULL, &delim);
-				}
-			}
-		}/* else{
-			session_name = temp->client.usr.session_ID;
+		while(session_name != NULL){
+			printf("session_name: %s", session_name);
 			if(strcmp(session_name, session_ID) == 0){
+				printf("Done verify_session\n");
 				return 1;
 			}
-		}*/
+			session_name = strtok(NULL, &delim);
+		}
 		temp = temp->next;
 	}
+
 	//the session named "session_ID" does not exist yet or has been terminated
+	printf("Done verify_session\n");
 	return 0;
 }
 
@@ -373,6 +371,7 @@ void join(int sockfd, unsigned char source[], unsigned char data[]){
 	//check to see if any of the current clients are in the specified session_ID
 	//if so, change the source client's session_ID to the one requested and send JN_ACK
 	//if not, or if the client has previously been in a session, send a JN_NAK
+	printf("In join\n");
 	struct Node * client_node = find_client(0, source);
 	if(client_node == NULL){
 		printf("user not found\n");
@@ -416,11 +415,14 @@ void join(int sockfd, unsigned char source[], unsigned char data[]){
 		}
 	}
 
+	printf("Done join\n");
+
 }
 
 void leave_sess(unsigned char source[], unsigned char data[]){
 	//if current session ID is null, no change
 	//if current session ID is not null, set to "attended" to indicate that the client has been in a session and will not be able to join others
+	printf("in leave_sess\n");
 	struct Node * client_node = find_client(0, source);
 	if(client_node == NULL){
 		printf("user not found\n");
@@ -442,12 +444,14 @@ void leave_sess(unsigned char source[], unsigned char data[]){
 		}
 	}
 	strcpy(client_node->client.usr.session_ID, new_sess_list);
+	printf("done leave_sess\n");
 
 }
 
 void new_sess(int sockfd, unsigned char source[], unsigned char data[]){
 	//check to make sure session is not already in progress
 	//set source client's session ID to the specified value and send a NS_ACK
+	printf("in new_sess\n");
 	struct Node * client_node = find_client(0, source);
 	if(client_node == NULL){
 		printf("user not found\n");
@@ -470,6 +474,7 @@ void new_sess(int sockfd, unsigned char source[], unsigned char data[]){
 	} else{
 		strcat(client_node->client.usr.session_ID, data);
 		strcat(client_node->client.usr.session_ID, ",");
+		printf("Session IDs: %s\n", client_node->client.usr.session_ID);
 		m = create_message(NS_ACK, "", reply_data);
 		strcpy(packet_string, message_to_string(m));
 		if(send(sockfd, packet_string, sizeof(packet_string), 0) == -1){
@@ -478,11 +483,13 @@ void new_sess(int sockfd, unsigned char source[], unsigned char data[]){
 			exit(1);
 		}
 	}
+	printf("done new_sess\n");
 }
 
 void message(unsigned char source[], unsigned char data[]){
 	//check current session ID for source client
 	//iterate through online clients and, if their session ID matches, send the data to the corresponding sockfd
+	printf("in message\n");
 	struct Node * source_client = find_client(0, source);
 	if(source_client == NULL){
 		printf("user not found\n");
@@ -519,7 +526,9 @@ void message(unsigned char source[], unsigned char data[]){
 		}
 		source_session = strtok(NULL, &delim);
 	}
+	printf("Done message\n");
 }
+
 
 void list(int sockfd){
 	//send QU_ACK
@@ -564,10 +573,11 @@ void list(int sockfd){
 		printf("Exiting...\n");
 		exit(1);
 	}
-
+	printf("done list\n");
 }
 
 void invite(int sockfd, unsigned char source[], unsigned char data[]){
+	printf("in invite\n");
 	struct Node * source_client = find_client(0, source);
 	if(source_client == NULL){
 		printf("user not found\n");
@@ -630,10 +640,13 @@ void invite(int sockfd, unsigned char source[], unsigned char data[]){
 		exit(1);
 	}
 
+	printf("done invite\n");
+
 }
 
 
 void inv_accept(int sockfd, unsigned char data[]){
+	printf("in inv_accept\n");
 	struct Node * source_client = find_client(sockfd, NULL);
 	if(source_client == NULL){
 		printf("user not found\n");
@@ -660,10 +673,14 @@ void inv_accept(int sockfd, unsigned char data[]){
 		exit(1);
 	}
 
+	printf("done inv_accept\n");
+
 }
 
 
 void inv_reject(int sockfd, unsigned char data[]){
+
+	printf("in inv_reject\n");
 	struct Node * source_client = find_client(sockfd, NULL);
 	if(source_client == NULL){
 		printf("user not found\n");
@@ -689,4 +706,6 @@ void inv_reject(int sockfd, unsigned char data[]){
 		printf("Exiting...\n");
 		exit(1);
 	}
+
+	printf("done inv_reject\n");
 }

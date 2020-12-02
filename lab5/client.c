@@ -512,7 +512,7 @@ void *receivemessage(void* socketfd) {
                         //send packet_string to server
                         if(send(socketfd, packet_string, sizeof(packet_string), 0) == ERROR) {
                             printf("failed to send '%s' to server\n", packet_string);
-                            return;
+                            exit(1);
                         } 
                         responded = true;
                     } 
@@ -529,7 +529,7 @@ void *receivemessage(void* socketfd) {
                         //send packet_string to server
                         if(send(socketfd, packet_string, sizeof(packet_string), 0) == ERROR) {
                             printf("failed to send '%s' to server\n", packet_string);
-                            return;
+                            exit(1);
                         } 
                         responded = true;
                     }
