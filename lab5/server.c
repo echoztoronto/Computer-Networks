@@ -48,7 +48,7 @@ struct Node * head = NULL;
 
 int num_users = 4;
 
-User approved_users[] = { {"Yuwen", "lp473f9", NULL}, {"Ryan", "qXp62v3", NULL}, {"Jason", "bt4zAp8", NULL}, {"Mary", "wR5mx72", NULL} };
+User approved_users[] = { {"Yuwen", "abc", NULL}, {"Ryan", "def", NULL}, {"Jason", "ghi", NULL}, {"Mary", "jkl", NULL} };
 
 int main(int argc, char *argv[])
 {

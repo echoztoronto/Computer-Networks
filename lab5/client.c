@@ -103,9 +103,9 @@ int main() {
             if(!logged) {
                 printf("you are not logged in!\n");
             }
-            else if(joined) {
+            /*else if(joined) {
                 printf("you are already in a session!\n");
-            } else {
+            }*/ else {
                 createsession(input, socketfd, &joined, username);
             }
             
