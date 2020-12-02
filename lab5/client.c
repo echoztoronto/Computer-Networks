@@ -485,7 +485,7 @@ void *receivemessage(void* socketfd) {
         if(recv(*socketfd_p, (char*)buf, sizeof buf, 0) != ERROR) {
             struct message *r = string_to_message(buf);
             
-            printf("receivemessage (pthread): %s\n", buf);
+            //printf("receivemessage (pthread): %s\n", buf);
             
             if(r->type == MESSAGE) {
                 printf("%s: %s\n", r->source, r->data);
@@ -493,7 +493,10 @@ void *receivemessage(void* socketfd) {
 
             if(r->type == INVITATION) {
                 pthread_mutex_lock(&lock);
-                printf("%s invites you to session %s\n", r->source, r->data);
+                char delim = ',';
+                char * sess = strtok(r->data, &delim);
+                char * usrID = strtok(NULL, &delim);
+                printf("%s invites you to session %s\n", r->source, sess);
                 printf("type 'y' to accept, 'n' to reject\n");
 
                 //loop until client responses (with valid command)
@@ -511,12 +514,13 @@ void *receivemessage(void* socketfd) {
                         char reply[MAX_CHAR];
                         strcpy(reply, r->source);
                         strcat(reply, ",");
-                        strcpy(reply, r->data);
-                        struct message *m = create_message(INV_ACCEPT, "", reply);
+                        strcat(reply, sess);
+                        struct message *m = create_message(INV_ACCEPT, usrID, reply);
                         strcpy(packet_string, message_to_string(m));
                         
                         //send packet_string to server
-                        if(send(socketfd, packet_string, sizeof(packet_string), 0) == ERROR) {
+                        if(send(*socketfd_p, packet_string, sizeof(packet_string), 0) == ERROR) {
+                            perror("send: ");
                             printf("failed to send '%s' to server\n", packet_string);
                             exit(1);
                         } 
@@ -528,8 +532,8 @@ void *receivemessage(void* socketfd) {
                         char reply[MAX_CHAR];
                         strcpy(reply, r->source);
                         strcat(reply, ",");
-                        strcpy(reply, r->data);
-                        struct message *m = create_message(INV_REJECT, "", reply);
+                        strcat(reply, sess);
+                        struct message *m = create_message(INV_REJECT, usrID, reply);
                         strcpy(packet_string, message_to_string(m));
                         
                         //send packet_string to server

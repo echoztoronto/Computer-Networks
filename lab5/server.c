@@ -17,8 +17,8 @@ void new_sess(int sockfd, unsigned char source[], unsigned char data[]);
 void message(unsigned char source[], unsigned char data[]);
 void list(int sockfd);
 void invite(int sockfd, unsigned char source[], unsigned char data[]);
-void inv_accept(int sockfd, unsigned char data[]);
-void inv_reject(int sockfd, unsigned char data[]);
+void inv_accept(int sockfd, unsigned char source[], unsigned char data[]);
+void inv_reject(int sockfd, unsigned char source[], unsigned char data[]);
 
 void add_client(int new_fd, struct sockaddr_in addr_in);
 struct Node * find_client(int sockfd, char * client_ID);
@@ -199,10 +199,10 @@ int main(int argc, char *argv[])
     							invite(i, temp_message->source, temp_message->data);
     							break;
     						case INV_ACCEPT:
-    							inv_accept(i, temp_message->data);
+    							inv_accept(i, temp_message->source, temp_message->data);
     							break;
     						case INV_REJECT:
-    							inv_reject(i, temp_message->data);
+    							inv_reject(i, temp_message->source, temp_message->data);
     							break;
     						default:
     							printf("In default case.\n");
@@ -641,10 +641,13 @@ void invite(int sockfd, unsigned char source[], unsigned char data[]){
 	}
 
 	//send invitation to intended recipient
+	strcpy(reply_data, session_ID);
+	strcat(reply_data, ",");
+	strcat(reply_data, dest_client->client.usr.ID);
 	if(!NACK){
 		printf("Sending INVITATION to intended recipient.\n");
 		m = NULL;
-		m = create_message(INVITATION, source, session_ID);
+		m = create_message(INVITATION, source, reply_data);
 		strcpy(packet_string, message_to_string(m));
 		if(send(dest_client->client.sockfd, packet_string, sizeof(packet_string), 0) == -1){
 			perror("Error calling send()");
@@ -658,9 +661,9 @@ void invite(int sockfd, unsigned char source[], unsigned char data[]){
 }
 
 
-void inv_accept(int sockfd, unsigned char data[]){
+void inv_accept(int sockfd, unsigned char source[], unsigned char data[]){
 	printf("in inv_accept\n");
-	struct Node * source_client = find_client(sockfd, NULL);
+	struct Node * source_client = find_client(0, source);
 	if(source_client == NULL){
 		printf("user not found\n");
 	}
@@ -691,10 +694,10 @@ void inv_accept(int sockfd, unsigned char data[]){
 }
 
 
-void inv_reject(int sockfd, unsigned char data[]){
+void inv_reject(int sockfd, unsigned char source[], unsigned char data[]){
 
 	printf("in inv_reject\n");
-	struct Node * source_client = find_client(sockfd, NULL);
+	struct Node * source_client = find_client(0, source);
 	if(source_client == NULL){
 		printf("user not found\n");
 	}
