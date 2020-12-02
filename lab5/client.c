@@ -39,7 +39,7 @@ void list(int socketfd, char username[]);
 void sendtext(char input[], int socketfd, char username[]);
 
 //receive messages from server (using a thread)
-void *receivemessage(void* socketfd);  
+void *receivemessage(void* socketfd, bool *invited);  
 
 //display all valid commands
 void help();
@@ -52,103 +52,99 @@ void invite(char input[], int socketfd, char username[]);
 int connect_server(char ip[], char port[]);
 
 
-
 int main() {
     char input[MAX_CHAR], command[MAX_CHAR], username[MAX_CHAR];
     int socketfd;
     bool logged = false;
     bool joined = false;
-    bool thread_on = false;
+    bool invited = false;
     pthread_t recv_thread;
 
     while(true) {
+        bool create_thread = true;
         
-        fgets(input, MAX_CHAR, stdin);
-        sscanf(input, "%s", &command);
+        int* socketfd_p = &socketfd;
+        pthread_create(&recv_thread, NULL, receivemessage, socketfd_p);
+        
+	if (!invited) {
+		fgets(input, MAX_CHAR, stdin);
+		sscanf(input, "%s", &command);
 
-        if (strcmp(command, "/login") == 0) {
-            
-            if(logged) {
-                printf("you are already logged in!\n");
-            } else {
-                login(input, &socketfd, &logged, username);
-            }
-            
-        } else if (strcmp(command, "/logout") == 0) {
-            
-            if(!logged) {
-                printf("you are not logged in!\n");
-            } else {
-                logout(&socketfd, &logged, username);
-            }
-            
-        } else if (strcmp(command, "/joinsession") == 0) {
-            
-            if(!logged) {
-                printf("you are not logged in!\n");
-            }
-            else {
-                joinsession(input, socketfd, &joined, username);
-            }
-            
-        } else if (strcmp(command, "/leavesession") == 0) {
-            
-            if(joined) {
-                leavesession(input, socketfd, &joined, username);
-            } else {
-                printf("you are not in any session yet!\n");
-            }
-            
-        } else if (strcmp(command, "/createsession") == 0) {
-            if(!logged) {
-                printf("you are not logged in!\n");
-            }
-            /*else if(joined) {
-                printf("you are already in a session!\n");
-            }*/ else {
-                createsession(input, socketfd, &joined, username);
-            }
-            
-        } else if (strcmp(command, "/list") == 0) {
-            
-            list(socketfd, username);
-            
-        } else if (strcmp(command,"/quit") == 0) {
-            
-            logout(&socketfd, &logged, username);
-            printf("quitting..\n");
-            
-            break;
-            
-        } else if (strcmp(command,"/help") == 0) {
-            
-            help();
-            
-        } else if (strcmp(command, "/invite") == 0) {
-            
-            invite(input, socketfd, username);
-            
-        } else {
-            
-            if(!logged || !joined) {
-                printf("Invalid command. Use /help to see all valid commands.\n");
-            } else {
-                sendtext(input, socketfd, username);
-            }
-        }
-        
-        //turn on thread to receive messages while in session
-        if(joined && !thread_on) {
-            int* socketfd_p = &socketfd;
-            pthread_create(&recv_thread, NULL, receivemessage, socketfd_p);
-            thread_on = true;
-        }
-        
-        //not in session but thread is on, should turn it off
-        if(!joined && thread_on) {
-            pthread_cancel(recv_thread);
-            thread_on = false;
-        }
+		if (strcmp(command, "/login") == 0) {
+
+		    if(logged) {
+			printf("you are already logged in!\n");
+		    } else {
+			pthread_cancel(recv_thread);
+			login(input, &socketfd, &logged, username);
+		    }
+
+		} else if (strcmp(command, "/logout") == 0) {
+
+		    if(!logged) {
+			printf("you are not logged in!\n");
+		    } else {
+			pthread_cancel(recv_thread);
+			logout(&socketfd, &logged, username);
+		    }
+
+		} else if (strcmp(command, "/joinsession") == 0) {
+
+		    if(!logged) {
+			printf("you are not logged in!\n");
+		    }
+		    else {
+			pthread_cancel(recv_thread);
+			joinsession(input, socketfd, &joined, username);
+		    }
+
+		} else if (strcmp(command, "/leavesession") == 0) {
+
+		    if(joined) {
+			pthread_cancel(recv_thread);
+			leavesession(input, socketfd, &joined, username);
+		    } else {
+			printf("you are not in any session yet!\n");
+		    }
+
+		} else if (strcmp(command, "/createsession") == 0) {
+
+		    if(!logged) {
+			printf("you are not logged in!\n");
+		    }
+		    else {
+			pthread_cancel(recv_thread);
+			createsession(input, socketfd, &joined, username);
+		    }
+
+		} else if (strcmp(command, "/list") == 0) {
+		    pthread_cancel(recv_thread);
+		    list(socketfd, username);
+
+		} else if (strcmp(command,"/quit") == 0) {
+		    pthread_cancel(recv_thread);
+		    logout(&socketfd, &logged, username);
+		    printf("quitting..\n");
+
+		    break;
+
+		} else if (strcmp(command,"/help") == 0) {
+		    pthread_cancel(recv_thread);
+		    help();
+
+		} else if (strcmp(command, "/invite") == 0) {
+		    pthread_cancel(recv_thread);
+		    invite(input, socketfd, username);
+
+		} else {
+
+		    if(!logged || !joined) {
+			printf("Invalid command. Use /help to see all valid commands.\n");
+		    } else {
+			sendtext(input, socketfd, username);
+		    }
+		}
+    	}
     }
     
 	return 0;
@@ -196,6 +192,8 @@ void login(char input[], int *socketfd, bool *logged, char username[]) {
             memset(packet_string, 0, sizeof packet_string);
             return;
         } 
+        
+        printf("login sending: %s\n", packet_string);
         
         //receive from server
         char recv_message[MAX_CHAR];
@@ -471,7 +469,7 @@ void help() {
 
 
 //receive messages while in session
-void *receivemessage(void* socketfd) {
+void *receivemessage(void* socketfd, bool *invited) {
     
     char buf[MAX_CHAR];
     int* socketfd_p = (int*)socketfd;
@@ -482,6 +480,8 @@ void *receivemessage(void* socketfd) {
         if(recv(*socketfd_p, (char*)buf, sizeof buf, 0) != ERROR) {
             struct message *r = string_to_message(buf);
             
+            printf("receivemessage (pthread): %s\n", buf);
+            
             if(r->type == MESSAGE) {
                 printf("%s: %s\n", r->source, r->data);
             }
@@ -489,6 +489,7 @@ void *receivemessage(void* socketfd) {
             if(r->type == INVITATION) {
                 printf("%s invites you to session %s\n", r->source, r->data);
                 printf("type 'y' to accept, 'n' to reject\n");
+		*invited = true;
 
                 //loop until client responses (with valid command)
                 char input[MAX_CHAR], command[MAX_CHAR];
@@ -514,6 +515,7 @@ void *receivemessage(void* socketfd) {
                             printf("failed to send '%s' to server\n", packet_string);
                             exit(1);
                         } 
+			*invited = false;
                         responded = true;
                     } 
                     else if (strcmp(command, "n") == 0) {
@@ -531,6 +533,7 @@ void *receivemessage(void* socketfd) {
                             printf("failed to send '%s' to server\n", packet_string);
                             exit(1);
                         } 
+			*invited = false;
                         responded = true;
                     }
                     else {
@@ -540,9 +543,8 @@ void *receivemessage(void* socketfd) {
                     }
                 }
             }
-
-            free(r);
             
+            free(r);
         }
         memset(buf, 0, sizeof buf);
     }
@@ -569,7 +571,7 @@ void invite(char input[], int socketfd, char username[]) {
     send_status = send(socketfd, packet_string, sizeof(packet_string), 0);
     if( send_status == ERROR) {
         printf("failed to send '%s' to server\n", packet_string);
-        return;
+        exit(1);
     } 
     
     //receive INVITE_ACK or INVITE_NAK 
