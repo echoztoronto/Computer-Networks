@@ -23,9 +23,9 @@ void logout(int *socketfd, bool *logged, char username[]);
 //join the session with given session id
 void joinsession(char input[], int socketfd, bool *joined, char username[]);
 
-//leavesession
-//leave current session
-void leavesession(int socketfd, bool *joined, char username[]);
+//leavesession <session ID>
+//leave specific session
+void leavesession(char input[], int socketfd, bool *joined, char username[]);
 
 //createsession <session ID>
 //create a new session and join it
@@ -94,7 +94,7 @@ int main() {
         } else if (strcmp(command, "/leavesession") == 0) {
             
             if(joined) {
-                leavesession(socketfd, &joined, username);
+                leavesession(input, socketfd, &joined, username);
             } else {
                 printf("you are not in any session yet!\n");
             }
@@ -333,14 +333,17 @@ void joinsession(char input[], int socketfd, bool *joined, char username[]) {
     }
 }
 
-//leavesession
+//leavesession <session ID>
 //leave current session
 //send LEAVE_SESS
-void leavesession(int socketfd, bool *joined, char username[]) {
+void leavesession(char input[], int socketfd, bool *joined, char username[]) {
     
+    char command[MAX_CHAR], sessionID[MAX_CHAR];
+    sscanf(input, "%s %s", &command, &sessionID);
+
     //create packet_string
     char packet_string[MAX_CHAR];
-    struct message *m = create_message(LEAVE_SESS, username, "");
+    struct message *m = create_message(LEAVE_SESS, username, sessionID);
     strcpy(packet_string, message_to_string(m));
     
     //send packet_string to server
@@ -456,9 +459,9 @@ void help() {
     printf("All valid commands:\n");
     printf("/login <client ID> <password> <server-IP> <server-port>\n");
     printf("/logout\n");
-    printf("/joinsession <session ID>\n");
-    printf("/leavesession\n");
     printf("/createsession <session ID>\n");
+    printf("/joinsession <session ID>\n");
+    printf("/leavesession <session ID>\n");
     printf("/list\n");
     printf("/quit\n");
     printf("/help\n");
