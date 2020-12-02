@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
     while(1){
     	readfds = fd_list;
 
-    	printf("Calling select()");
+    	printf("Calling select()\n");
     	if(select(max_fd+1, &readfds, NULL, NULL, NULL) == -1){
     		perror("Error calling select()");
     		printf("Exiting...\n");
@@ -255,6 +255,7 @@ struct Node * find_client(int sockfd, char * client_ID){
 			temp = temp->next;
 		}
 	}
+	printf("Done find_client\n");
 	return NULL;
 }
 
@@ -303,6 +304,9 @@ int verify_session(char * session_ID){
 	char delim = ',';
 	char * session_name;
 	session_name = strtok(temp->client.usr.session_ID, ",");
+	if(session_name == NULL){
+		printf("session_name is null in verify_session\n");
+	}
 	while(temp != NULL){
 		while(session_name != NULL){
 			printf("session_name: %s", session_name);
@@ -631,13 +635,15 @@ void invite(int sockfd, unsigned char source[], unsigned char data[]){
 	}
 
 	//send invitation to intended recipient
-	m = NULL;
-	m = create_message(INVITATION, source, data);
-	strcpy(packet_string, message_to_string(m));
-	if(send(dest_client->client.sockfd, packet_string, sizeof(packet_string), 0) == -1){
-		perror("Error calling send()");
-		printf("Exiting...\n");
-		exit(1);
+	if(!NACK){
+		m = NULL;
+		m = create_message(INVITATION, source, data);
+		strcpy(packet_string, message_to_string(m));
+		if(send(dest_client->client.sockfd, packet_string, sizeof(packet_string), 0) == -1){
+			perror("Error calling send()");
+			printf("Exiting...\n");
+			exit(1);
+		}
 	}
 
 	printf("done invite\n");
