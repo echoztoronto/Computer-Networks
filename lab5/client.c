@@ -499,7 +499,11 @@ void *receivemessage(void* socketfd) {
                     if (strcmp(command, "y") == 0) {
                         //create packet_string
                         char packet_string[MAX_CHAR];
-                        struct message *m = create_message(INV_ACCEPT, "", "");
+                        char reply[MAX_CHAR];
+                        strcpy(reply, r->source);
+                        strcat(reply, ",");
+                        strcpy(reply, r->data);
+                        struct message *m = create_message(INV_ACCEPT, "", reply);
                         strcpy(packet_string, message_to_string(m));
                         
                         //send packet_string to server
@@ -512,7 +516,11 @@ void *receivemessage(void* socketfd) {
                     else if (strcmp(command, "n") == 0) {
                         //create packet_string
                         char packet_string[MAX_CHAR];
-                        struct message *m = create_message(INV_REJECT, "", "");
+                        char reply[MAX_CHAR];
+                        strcpy(reply, r->source);
+                        strcat(reply, ",");
+                        strcpy(reply, r->data);
+                        struct message *m = create_message(INV_REJECT, "", reply);
                         strcpy(packet_string, message_to_string(m));
                         
                         //send packet_string to server

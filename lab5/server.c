@@ -12,15 +12,19 @@
 void login(int sockfd, unsigned char source[], unsigned char data[]);
 void logout(unsigned char source[]);
 void join(int sockfd, unsigned char source[], unsigned char data[]);
-void leave_sess(unsigned char source[]);
+void leave_sess(unsigned char source[], unsigned char data[]);
 void new_sess(int sockfd, unsigned char source[], unsigned char data[]);
 void message(unsigned char source[], unsigned char data[]);
 void list(int sockfd);
+void invite(int sockfd, unsigned char source[], unsigned char data[]);
+void inv_accept(int sockfd, unsigned char data[]);
+void inv_reject(int sockfd, unsigned char data[]);
 
 void add_client(int new_fd, struct sockaddr_in addr_in);
 struct Node * find_client(int sockfd, char * client_ID);
 int verify_login(char * client_ID, char * password);
 int verify_session(char * session_ID);
+
 
 typedef struct User{
 	char ID[MAX_NAME];
@@ -180,7 +184,7 @@ int main(int argc, char *argv[])
     							join(i, temp_message->source, temp_message->data);
     							break;
     						case LEAVE_SESS:
-    							leave_sess(temp_message->source);
+    							leave_sess(temp_message->source, temp_message->data);
     							break;
     						case NEW_SESS:
     							new_sess(i, temp_message->source, temp_message->data);
@@ -190,6 +194,15 @@ int main(int argc, char *argv[])
     							break;
     						case QUERY:
     							list(i);
+    							break;
+    						case INVITE:
+    							invite(i, temp_message->source, temp_message->data);
+    							break;
+    						case INV_ACCEPT:
+    							inv_accept(i, temp_message->data);
+    							break;
+    						case INV_REJECT:
+    							inv_reject(i, temp_message->data);
     							break;
     						default:
     							printf("In default case.\n");
@@ -286,11 +299,23 @@ int verify_login(char * client_ID, char * password){
 
 int verify_session(char * session_ID){
 	struct Node * temp = head;
+	char * session_name = NULL;
+	char delim = ',';
 	while(temp != NULL){
-		if(strcmp(temp->client.usr.session_ID, session_ID) == 0){
-			//the session exists and at least one client is involved
-			return 1;
-		}
+		if(session_name = strtok(temp->client.usr.session_ID, &delim) != NULL){
+			while(session_name != NULL){
+				if(strcmp(session_name, session_ID) == 0){
+					return 1;
+				} else{
+					session_name = strtok(NULL, &delim);
+				}
+			}
+		}/* else{
+			session_name = temp->client.usr.session_ID;
+			if(strcmp(session_name, session_ID) == 0){
+				return 1;
+			}
+		}*/
 		temp = temp->next;
 	}
 	//the session named "session_ID" does not exist yet or has been terminated
@@ -355,23 +380,20 @@ void join(int sockfd, unsigned char source[], unsigned char data[]){
 	struct message * m;
 	char reply_data[MAX_CHAR];
 	char packet_string[MAX_CHAR];
-	strcpy(reply_data, data);
-	strcat(reply_data, ",");
-	if(strcmp(client_node->client.usr.session_ID, "attended") == 0){
-		//client has already attended a previous session
-		strcat(reply_data, "This user has already attended a session.");
-		m = create_message(JN_NAK, "", reply_data);
+
+	if(strstr(client_node->client.usr.session_ID, data) != NULL){
+		strcpy(reply_data, "You are already in the specified session.");
+		m = create_message(JN_ACK, "", reply_data);
 		strcpy(packet_string, message_to_string(m));
 		if(send(sockfd, packet_string, sizeof(packet_string), 0) == -1){
 			perror("Error calling send()");
 			printf("Exiting...\n");
 			exit(1);
 		}
-	}
-
-	if(verify_session(data)){
+	} else if(verify_session(data)){
 		//the session exists, so the current user will now be made part of the session
-		strcpy(client_node->client.usr.session_ID, data);
+		strcat(client_node->client.usr.session_ID, data);
+		strcat(client_node->client.usr.session_ID, ",");
 		strcpy(reply_data, data);
 		m = create_message(JN_ACK, "", reply_data);
 		strcpy(packet_string, message_to_string(m));
@@ -396,16 +418,30 @@ void join(int sockfd, unsigned char source[], unsigned char data[]){
 
 }
 
-void leave_sess(unsigned char source[]){
+void leave_sess(unsigned char source[], unsigned char data[]){
 	//if current session ID is null, no change
 	//if current session ID is not null, set to "attended" to indicate that the client has been in a session and will not be able to join others
 	struct Node * client_node = find_client(0, source);
 	if(client_node == NULL){
 		printf("user not found\n");
 	}
-	if(client_node->client.usr.session_ID != NULL){
-		strcpy(client_node->client.usr.session_ID, "attended");
+	char new_sess_list[MAX_CHAR];
+	char * current_sess_list = client_node->client.usr.session_ID;
+	char * sess;
+	char delim = ',';
+
+	//go through the source client's list of active sessions
+	//move all session_IDs that the client does not wish to leave into a new char array
+	//replace the source client's session list with the new list
+	if(sess = strtok(current_sess_list, &delim) != NULL){
+		while(sess != NULL){
+			if(strcmp(sess, data) != 0){
+				strcat(new_sess_list, sess);
+				strcat(new_sess_list, ",");
+			}
+		}
 	}
+	strcpy(client_node->client.usr.session_ID, new_sess_list);
 
 }
 
@@ -432,7 +468,8 @@ void new_sess(int sockfd, unsigned char source[], unsigned char data[]){
 			exit(1);
 		}
 	} else{
-		strcpy(client_node->client.usr.session_ID, data);
+		strcat(client_node->client.usr.session_ID, data);
+		strcat(client_node->client.usr.session_ID, ",");
 		m = create_message(NS_ACK, "", reply_data);
 		strcpy(packet_string, message_to_string(m));
 		if(send(sockfd, packet_string, sizeof(packet_string), 0) == -1){
@@ -452,22 +489,35 @@ void message(unsigned char source[], unsigned char data[]){
 	}
 	struct message * m;
 	char packet_string[MAX_CHAR];
-	char session[MAX_CHAR];
-	strcpy(session, source_client->client.usr.session_ID);
+	char * session;
+	char * source_session;
+	char delim = ',';
 
-	struct Node * dest_client = head;
-	while(dest_client != NULL){
-		if(strcmp(dest_client->client.usr.session_ID, session) == 0 && strcmp(dest_client->client.usr.ID, source) != 0){
-			//the current dest_client is in the same session and is not the sender, so they should receive the message
-			m = create_message(MESSAGE, source, data);
-			strcpy(packet_string, message_to_string(m));
-			if(send(dest_client->client.sockfd, packet_string, sizeof(packet_string), 0) == -1){
-				perror("Error calling send()");
-				printf("Exiting...\n");
-				exit(1);
+	//iterate through each session attended by the source client
+	source_session = strtok(source_client->client.usr.session_ID, &delim);
+	while(source_session != NULL){
+		//send messages to all clients also currently attending the same session(s)
+		struct Node * dest_client = head;
+		while(dest_client != NULL){
+			//iterate through each 
+			session = strtok(dest_client->client.usr.session_ID, &delim);
+			while(session != NULL){
+				//if the dest_client is not the source client and a common session has been found
+				if(strcmp(dest_client->client.usr.ID, source) != 0 && strcmp(session, source_session) == 0){
+					//the current dest_client is in the same session and is not the sender, so they should receive the message
+					m = create_message(MESSAGE, source, data);
+					strcpy(packet_string, message_to_string(m));
+					if(send(dest_client->client.sockfd, packet_string, sizeof(packet_string), 0) == -1){
+						perror("Error calling send()");
+						printf("Exiting...\n");
+						exit(1);
+					}
+				}
+				session = strtok(NULL, &delim);
 			}
+			dest_client = dest_client->next;
 		}
-		dest_client = dest_client->next;
+		source_session = strtok(NULL, &delim);
 	}
 }
 
@@ -478,9 +528,11 @@ void list(int sockfd){
 	struct message * m;
 	char packet_string[10*MAX_CHAR];
 
+	char delim = ',';
 	char online_users[5*MAX_NAME];
 	char active_sessions[5*MAX_CHAR];
 	char reply_data[10*MAX_CHAR];
+	char * session_ID;
 	strcpy(online_users, "Users currently online: ");
 	strcpy(active_sessions, "\nSessions currently active: ");
 	struct Node * client = head;
@@ -489,10 +541,14 @@ void list(int sockfd){
 		strcat(online_users, client->client.usr.ID);
 		strcat(online_users, " ");
 		if(client->client.usr.session_ID != NULL){
-			if(strcmp(client->client.usr.session_ID, "attended") != 0 && strstr(active_sessions, client->client.usr.session_ID) == NULL){
-				//the user is currently in a session and that session has not been added to the list yet
-				strcat(active_sessions, client->client.usr.session_ID);
-				strcat(active_sessions, " ");
+			session_ID = strtok(client->client.usr.session_ID, &delim);
+			while(session_ID != NULL){
+				if(strstr(active_sessions, session_ID) == NULL){
+					//the user is currently in a session that has not been added to the list yet
+					strcat(active_sessions, client->client.usr.session_ID);
+					strcat(active_sessions, " ");
+				}
+				session_ID = strtok(NULL, &delim);
 			}
 		}
 		client = client->next;
@@ -511,3 +567,126 @@ void list(int sockfd){
 
 }
 
+void invite(int sockfd, unsigned char source[], unsigned char data[]){
+	struct Node * source_client = find_client(0, source);
+	if(source_client == NULL){
+		printf("user not found\n");
+	}
+
+	int NACK = 0;
+	struct message * m;
+	char reply_data[MAX_CHAR];
+	char packet_string[MAX_CHAR];
+
+	char delim = ',';
+	char * dest_client_ID = strtok(data, &delim);
+	char * session_ID = strtok(NULL, &delim);
+	struct Node * dest_client = find_client(0, dest_client_ID);
+	if(dest_client == NULL){
+		strcpy(reply_data, "There is no user <");
+		strcat(reply_data, dest_client_ID);
+		strcat(reply_data, "> or they are not currently signed in.");
+		NACK = 1;
+	} else if(!verify_session(session_ID)){
+		strcpy(reply_data, "There is no active session called <");
+		strcat(reply_data, session_ID);
+		strcat(reply_data, ">.");
+		NACK = 1;
+	} else if(strstr(source_client->client.usr.session_ID, session_ID) == NULL){
+		strcpy(reply_data, "You are not in session <");
+		strcat(reply_data, session_ID);
+		strcat(reply_data, ">.");
+		NACK = 1;
+	} else if(strstr(dest_client->client.usr.session_ID, session_ID) != NULL){
+		strcpy(reply_data, "User <");
+		strcat(reply_data, dest_client_ID);
+		strcat(reply_data, "> is already in session <");
+		strcat(reply_data, session_ID);
+		strcat(reply_data, ">.");
+		NACK = 1;
+	}
+
+	if(NACK){
+		m = create_message(INVITE_NAK, "", reply_data);
+	} else{
+		m = create_message(INVITE_ACK, "", reply_data);
+	}
+
+	//send invitation ack or nack back to sender
+	strcpy(packet_string, message_to_string(m));
+	if(send(sockfd, packet_string, sizeof(packet_string), 0) == -1){
+		perror("Error calling send()");
+		printf("Exiting...\n");
+		exit(1);
+	}
+
+	//send invitation to intended recipient
+	m = NULL;
+	m = create_message(INVITATION, source, data);
+	strcpy(packet_string, message_to_string(m));
+	if(send(dest_client->client.sockfd, packet_string, sizeof(packet_string), 0) == -1){
+		perror("Error calling send()");
+		printf("Exiting...\n");
+		exit(1);
+	}
+
+}
+
+
+void inv_accept(int sockfd, unsigned char data[]){
+	struct Node * source_client = find_client(sockfd, NULL);
+	if(source_client == NULL){
+		printf("user not found\n");
+	}
+
+	char delim = ',';
+	char * recipient = strtok(data, &delim);
+	char * sessionID = strtok(NULL, &delim);
+
+	strcat(source_client->client.usr.session_ID, sessionID);
+	strcat(source_client->client.usr.session_ID, ",");
+
+	struct Node * dest_client = find_client(0, recipient);
+	if(dest_client == NULL){
+		printf("user not found\n");
+	}
+
+	char packet_string[MAX_CHAR];
+	struct message * m = create_message(INV_RESPONSE, "", "accepted");
+	strcpy(packet_string, message_to_string(m));
+	if(send(dest_client->client.sockfd, packet_string, sizeof(packet_string), 0) == -1){
+		perror("Error calling send()");
+		printf("Exiting...\n");
+		exit(1);
+	}
+
+}
+
+
+void inv_reject(int sockfd, unsigned char data[]){
+	struct Node * source_client = find_client(sockfd, NULL);
+	if(source_client == NULL){
+		printf("user not found\n");
+	}
+
+	char delim = ',';
+	char * recipient = strtok(data, &delim);
+	char * sessionID = strtok(NULL, &delim);
+
+	strcat(source_client->client.usr.session_ID, sessionID);
+	strcat(source_client->client.usr.session_ID, ",");
+
+	struct Node * dest_client = find_client(0, recipient);
+	if(dest_client == NULL){
+		printf("user not found\n");
+	}
+
+	char packet_string[MAX_CHAR];
+	struct message * m = create_message(INV_RESPONSE, "", "rejected");
+	strcpy(packet_string, message_to_string(m));
+	if(send(dest_client->client.sockfd, packet_string, sizeof(packet_string), 0) == -1){
+		perror("Error calling send()");
+		printf("Exiting...\n");
+		exit(1);
+	}
+}
