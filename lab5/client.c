@@ -198,8 +198,6 @@ void login(char input[], int *socketfd, bool *logged, char username[]) {
             return;
         } 
         
-        printf("login sending: %s\n", packet_string);
-        
         //receive from server
         char recv_message[MAX_CHAR];
         unsigned int recv_status = ERROR;
