@@ -518,7 +518,14 @@ void message(unsigned char source[], unsigned char data[]){
 			//if the dest_client is not the source client and a common session has been found
 			if(strcmp(dest_client->client.usr.ID, source) != 0 && strstr(dest_client->client.usr.session_ID, source_session) != NULL){
 				//the current dest_client is in the same session and is not the sender, so they should receive the message
-				m = create_message(MESSAGE, source, data);
+				char format_data[MAX_CHAR];
+				strcpy(format_data, "(");
+				strcat(format_data, source_session);
+				strcat(format_data, ") ");
+				strcat(format_data, source);
+				strcat(format_data, ": ");
+				strcat(format_data, data);
+				m = create_message(MESSAGE, source, format_data);
 				strcpy(packet_string, message_to_string(m));
 				if(send(dest_client->client.sockfd, packet_string, sizeof(packet_string), 0) == -1){
 					perror("Error calling send()");

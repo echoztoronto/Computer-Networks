@@ -198,8 +198,6 @@ void login(char input[], int *socketfd, bool *logged, char username[]) {
             return;
         } 
         
-        printf("login sending: %s\n", packet_string);
-        
         //receive from server
         char recv_message[MAX_CHAR];
         unsigned int recv_status = ERROR;
@@ -488,7 +486,7 @@ void *receivemessage(void* socketfd) {
             //printf("receivemessage (pthread): %s\n", buf);
             
             if(r->type == MESSAGE) {
-                printf("%s: %s\n", r->source, r->data);
+                printf("%s\n", r->data);
             }
 
             if(r->type == INVITATION) {
