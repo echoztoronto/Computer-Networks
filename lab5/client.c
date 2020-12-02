@@ -142,7 +142,7 @@ int main() {
             
         } else {
             
-            if(!logged || !joined) {
+            if(!logged) {
                 printf("Invalid command. Use /help to see all valid commands.\n");
             } else {
                 sendtext(input, socketfd, username);

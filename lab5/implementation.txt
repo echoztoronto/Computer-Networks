@@ -23,15 +23,15 @@ I. Mulitiple sessions
 
 II. Invite
 new packet types: assume John wants to invite Mary
-    - INVITE <clientID>,<sessionID>        John -> server
-    - INVITE_ACK                           server -> John, invitation sent
-    - INVITE_NAK <reason>                  server -> John, invitation failed
-    - INVITATION <sessionID>               server -> Mary
-    - INV_ACCEPT                           Mary -> server, accept invitation
-    - INV_REJECT                           Mary -> server, reject invitation
-    - INV_RESPONSE <"accepted"/"rejected"> server -> John
+    - INVITE <clientID>,<sessionID>                 John -> server
+    - INVITE_ACK                                    server -> John, invitation sent
+    - INVITE_NAK <reason>                           server -> John, invitation failed
+    - INVITATION <sessionID>                        server -> Mary
+    - INV_ACCEPT <recipient clientID>,<sessionID>   Mary -> server, accept invitation
+    - INV_REJECT <recipient clientID>,<sessionID>   Mary -> server, reject invitation
+    - INV_RESPONSE <"accepted"/"rejected">          server -> John
 
-    1. John: INVITE Mary chat         (DONE)
+    1. John: INVITE Mary chat
         - sends INVITE to server
             - INVITE->data = "clientID,sessionID" 
 
@@ -47,7 +47,7 @@ new packet types: assume John wants to invite Mary
             - INVITATION->source is the sender's clientID
             - INVITATION->data is sessionID
 
-    3. Mary: responds to the invitation   (DONE)
+    3. Mary: responds to the invitation
         - receives INVITATION
         - displays: "<clientID> invites you to session <sessionID>"
         - displays: "type 'y' to accept, 'n' to reject"
@@ -61,7 +61,7 @@ new packet types: assume John wants to invite Mary
             - sends INV_RESPONSE rejected to the sender
         - note: "accepted" and "rejected" are in INV_RESPONSE->data field
 
-    5. John: gets nofitified    (DONE)
+    5. John: gets nofitified
         - receives INV_RESPONSE 
         - display: "your invitation is < >"  (INV_RESPONSE->data)
 

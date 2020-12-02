@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
     struct sockaddr_in client_addr;
     client_size = sizeof client_addr;
 
-
+    //while loop to listen for incoming messages or requests
     while(1){
     	readfds = fd_list;
 
@@ -219,6 +219,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 
+//add a new client node to the linked list
 void add_client(int new_fd, struct sockaddr_in addr_in){
 	struct Node * new = (struct Node*)malloc(sizeof(struct Node));
 	new->next = NULL;
@@ -238,6 +239,7 @@ void add_client(int new_fd, struct sockaddr_in addr_in){
 	return;
 }
 
+//find a specific client in the linked list
 struct Node * find_client(int sockfd, char * client_ID){
 	printf("In find_client\n sockfd: %d, client_ID: %s\n", sockfd, client_ID);
 	struct Node * temp = head;
@@ -259,6 +261,7 @@ struct Node * find_client(int sockfd, char * client_ID){
 	return NULL;
 }
 
+//remove a specific client from the linked list
 int remove_client(char * client_ID){
 	struct Node * temp = head;
 	while(temp != NULL){
@@ -275,6 +278,7 @@ int remove_client(char * client_ID){
 	return 0;
 }
 
+//recalculate the max file descriptor value for use in the call to select()
 int recalculate_max_fd(){
 	printf("Recalculating max_fd\n");
 	struct Node * temp = head;
@@ -288,18 +292,22 @@ int recalculate_max_fd(){
 	return max;
 }
 
+//verify that the user attempting to log in is a valid user
 int verify_login(char * client_ID, char * password){
 	printf("In verify_login. client_ID: %s, password: %s\n", client_ID, password);
 	for(int i=0; i<num_users; i++){
 		if(strcmp(client_ID, approved_users[i].ID) == 0 && strcmp(password, approved_users[i].pwd) == 0){
+			printf("Done verify_login. Login confirmed.\n");
 			return 1;
 		}
 	}
+	printf("Done verify_login. Login denied.\n");
 	return 0;
 }
 
+//verify that the session (session_ID) is an existing session
 int verify_session(char * session_ID){
-	printf("In verify_session!!\n");
+	printf("In verify_session\n");
 	struct Node * temp = head;
 	char delim = ',';
 	char usr_sess_list[MAX_CHAR];
@@ -308,7 +316,6 @@ int verify_session(char * session_ID){
 		strcpy(usr_sess_list, temp->client.usr.session_ID);
 		session_name = strtok(usr_sess_list, &delim);
 		while(session_name != NULL){
-			printf("session_name: %s\n", session_name);
 			if(strcmp(session_name, session_ID) == 0){
 				printf("Done verify_session. Found a match.\n");
 				return 1;
@@ -323,6 +330,7 @@ int verify_session(char * session_ID){
 	return 0;
 }
 
+//log in to the server with data = <clientID, password> 
 void login(int sockfd, unsigned char source[], unsigned char data[]){
 	char packet_string[MAX_CHAR];
 	char delim = ',';
@@ -353,7 +361,6 @@ void login(int sockfd, unsigned char source[], unsigned char data[]){
 			exit(1);
 		}
 	} else{
-		printf("In else clause\n");
 		struct message * m = create_message(LO_NAK, "", "Invalid username or password\n");
 		strcpy(packet_string, message_to_string(m));
 		if(send(sockfd, packet_string, sizeof(packet_string), 0) == -1){
@@ -364,12 +371,14 @@ void login(int sockfd, unsigned char source[], unsigned char data[]){
 	}
 }
 
+//log out of server
 void logout(unsigned char source[]){
 	if(remove_client(source) == 0){
 		printf("Error removing client from linked list.");
 	}
 }
 
+//join the specified session
 void join(int sockfd, unsigned char source[], unsigned char data[]){
 	//check to see if any of the current clients are in the specified session_ID
 	//if so, change the source client's session_ID to the one requested and send JN_ACK
@@ -422,6 +431,7 @@ void join(int sockfd, unsigned char source[], unsigned char data[]){
 
 }
 
+//leave the specified session
 void leave_sess(unsigned char source[], unsigned char data[]){
 	//if current session ID is null, no change
 	//if current session ID is not null, set to "attended" to indicate that the client has been in a session and will not be able to join others
@@ -451,6 +461,7 @@ void leave_sess(unsigned char source[], unsigned char data[]){
 
 }
 
+//create a new session
 void new_sess(int sockfd, unsigned char source[], unsigned char data[]){
 	//check to make sure session is not already in progress
 	//set source client's session ID to the specified value and send a NS_ACK
@@ -474,11 +485,9 @@ void new_sess(int sockfd, unsigned char source[], unsigned char data[]){
 			printf("Exiting...\n");
 			exit(1);
 		}
-	} else{
-		printf("Session IDs before new one: %s\n", client_node->client.usr.session_ID);	
+	} else{	
 		strcat(client_node->client.usr.session_ID, data);
 		strcat(client_node->client.usr.session_ID, ",");
-		printf("Session IDs after new one: %s\n", client_node->client.usr.session_ID);
 		m = create_message(NS_ACK, "", reply_data);
 		strcpy(packet_string, message_to_string(m));
 		if(send(sockfd, packet_string, sizeof(packet_string), 0) == -1){
@@ -490,6 +499,7 @@ void new_sess(int sockfd, unsigned char source[], unsigned char data[]){
 	printf("done new_sess\n");
 }
 
+//send a message to all other clients in any of the source client's existing sessions
 void message(unsigned char source[], unsigned char data[]){
 	//check current session ID for source client
 	//iterate through online clients and, if their session ID matches, send the data to the corresponding sockfd
@@ -508,10 +518,8 @@ void message(unsigned char source[], unsigned char data[]){
 
 	//iterate through each session attended by the source client
 	strcpy(source_session_list, source_client->client.usr.session_ID);
-	printf("source_session_list: %s\n", source_session_list);
 	source_session = strtok(source_session_list, &delim);
 	while(source_session != NULL){
-		printf("source_session: %s\n", source_session);
 		//send messages to all clients also currently attending the same session(s)
 		struct Node * dest_client = head;
 		while(dest_client != NULL){
@@ -541,7 +549,7 @@ void message(unsigned char source[], unsigned char data[]){
 	printf("Done message\n");
 }
 
-
+//list all existing session IDs and user IDs
 void list(int sockfd){
 	//send QU_ACK
 	//iterate through client linked list and send all user IDs and session IDs, being sure to check for duplicates
@@ -588,6 +596,7 @@ void list(int sockfd){
 	printf("done list\n");
 }
 
+//handle an invite message sent from one user to another
 void invite(int sockfd, unsigned char source[], unsigned char data[]){
 	printf("in invite\n");
 	struct Node * source_client = find_client(0, source);
@@ -664,7 +673,7 @@ void invite(int sockfd, unsigned char source[], unsigned char data[]){
 
 }
 
-
+//handle an invitation accept message sent from one user back to the original sender
 void inv_accept(int sockfd, unsigned char source[], unsigned char data[]){
 	printf("in inv_accept\n");
 	struct Node * source_client = find_client(0, source);
@@ -697,7 +706,7 @@ void inv_accept(int sockfd, unsigned char source[], unsigned char data[]){
 
 }
 
-
+//handle an invitation reject message sent from one user back to the original sender
 void inv_reject(int sockfd, unsigned char source[], unsigned char data[]){
 
 	printf("in inv_reject\n");
