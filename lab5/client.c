@@ -488,7 +488,7 @@ void *receivemessage(void* socketfd) {
             //printf("receivemessage (pthread): %s\n", buf);
             
             if(r->type == MESSAGE) {
-                printf("%s: %s\n", r->source, r->data);
+                printf("%s\n", r->data);
             }
 
             if(r->type == INVITATION) {
