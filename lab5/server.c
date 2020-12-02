@@ -304,7 +304,7 @@ int verify_session(char * session_ID){
 	char delim = ',';
 	char * session_name;
 	while(temp != NULL){
-		session_name = strtok(temp->client.usr.session_ID, ",");
+		session_name = strtok(temp->client.usr.session_ID, &delim);
 		while(session_name != NULL){
 			printf("session_name: %s", session_name);
 			if(strcmp(session_name, session_ID) == 0){
@@ -473,9 +473,16 @@ void new_sess(int sockfd, unsigned char source[], unsigned char data[]){
 			exit(1);
 		}
 	} else{
-		strcat(client_node->client.usr.session_ID, data);
-		strcat(client_node->client.usr.session_ID, ",");
-		printf("Session IDs: %s\n", client_node->client.usr.session_ID);
+		printf("Session IDs before new one: %s\n", client_node->client.usr.session_ID);
+		if(client_node->client.usr.session_ID == NULL || strcmp(client_node->client.usr.session_ID, "") == 0){
+			strcat(client_node->client.usr.session_ID, data);
+			strcat(client_node->client.usr.session_ID, ",");
+		} else{
+			strcat(client_node->client.usr.session_ID, ",");
+			strcat(client_node->client.usr.session_ID, data);
+			strcat(client_node->client.usr.session_ID, ",");
+		}
+		printf("Session IDs after new one: %s\n", client_node->client.usr.session_ID);
 		m = create_message(NS_ACK, "", reply_data);
 		strcpy(packet_string, message_to_string(m));
 		if(send(sockfd, packet_string, sizeof(packet_string), 0) == -1){
@@ -555,7 +562,7 @@ void list(int sockfd){
 			while(session_ID != NULL){
 				if(strstr(active_sessions, session_ID) == NULL){
 					//the user is currently in a session that has not been added to the list yet
-					strcat(active_sessions, client->client.usr.session_ID);
+					strcat(active_sessions, session_ID);
 					strcat(active_sessions, " ");
 				}
 				session_ID = strtok(NULL, &delim);
@@ -618,8 +625,10 @@ void invite(int sockfd, unsigned char source[], unsigned char data[]){
 	}
 
 	if(NACK){
+		printf("Sending invite NAK.\n");
 		m = create_message(INVITE_NAK, "", reply_data);
 	} else{
+		printf("Sending invite ACK.\n");
 		m = create_message(INVITE_ACK, "", reply_data);
 	}
 
@@ -633,8 +642,9 @@ void invite(int sockfd, unsigned char source[], unsigned char data[]){
 
 	//send invitation to intended recipient
 	if(!NACK){
+		printf("Sending INVITATION to intended recipient.\n");
 		m = NULL;
-		m = create_message(INVITATION, source, data);
+		m = create_message(INVITATION, source, session_ID);
 		strcpy(packet_string, message_to_string(m));
 		if(send(dest_client->client.sockfd, packet_string, sizeof(packet_string), 0) == -1){
 			perror("Error calling send()");
