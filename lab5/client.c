@@ -190,7 +190,7 @@ void login(char input[], int *socketfd, bool *logged, char username[]) {
             return;
         } 
         
-        printf("login sending: %\n", packet_string);
+        printf("login sending: %s\n", packet_string);
         
         //receive from server
         char recv_message[MAX_CHAR];
